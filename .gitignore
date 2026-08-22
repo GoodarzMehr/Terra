@@ -1,0 +1,16 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local IDE settings
+.vscode/
+.idea/
+
+# Runtime data (created when the game runs)
+highscores.json
