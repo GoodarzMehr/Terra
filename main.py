@@ -52,7 +52,26 @@ class Game:
         flags = 0
         if fullscreen:
             flags |= pygame.FULLSCREEN | pygame.SCALED
-        self.screen = pygame.display.set_mode((C.WINDOW_W, C.WINDOW_H), flags)
+            self.screen = pygame.display.set_mode((C.WINDOW_W, C.WINDOW_H), flags)
+        else:
+            # Fit the window to the display. A fixed 1600x1200 window is
+            # fine on a 4K screen but overflows smaller displays (or
+            # displays with OS scaling), so shrink it to the largest size
+            # that fits, keeping the 4:3 aspect ratio.
+            win_w, win_h = C.WINDOW_W, C.WINDOW_H
+            try:
+                dw, dh = pygame.display.get_desktop_sizes()[0]
+            except (IndexError, TypeError, ValueError):
+                dw = dh = None
+            if dw and dh:
+                margin = 48  # headroom for title bar / taskbar
+                scale = min(1.0, (dw - margin) / C.WINDOW_W,
+                            (dh - margin) / C.WINDOW_H)
+                if scale < 1.0:
+                    win_w = max(C.WIDTH, int(C.WINDOW_W * scale))
+                    win_h = max(C.HEIGHT, int(C.WINDOW_H * scale))
+            self.screen = pygame.display.set_mode((win_w, win_h),
+                                                  flags | pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
 
         self.sound = SoundBank()
@@ -346,8 +365,8 @@ class Game:
         self._present()
 
     def _present(self):
-        """Upscale the logical frame by UI_SCALE and blit it to the window."""
-        pygame.transform.scale(self.world, (C.WINDOW_W, C.WINDOW_H), self.screen)
+        """Upscale the logical frame to the window and blit it."""
+        pygame.transform.scale(self.world, self.screen.get_size(), self.screen)
         pygame.display.flip()
 
     # ------------------------------------------------------------------

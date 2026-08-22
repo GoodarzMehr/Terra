@@ -1,58 +1,71 @@
-# Galaga — Python Arcade
+<div align="center">
 
-A colorful, arcade-style **Galaga** clone built with `pygame`. No external assets:
-every sprite is drawn with pygame primitives and every sound effect is synthesized
-at runtime with numpy, so the whole game ships in a single folder.
+# 🚀 GALAGA
 
-## Features
+### *A classic arcade shooter, rebuilt in Python*
 
-- **Classic enemies** — red **Bee** (fast & erratic), blue-green **Galaga** (medium),
-  and the big two-part **Boss** (worth 400 pts, takes 2 hits — the first splits it in half).
-- **Choreographed fleet entry** — the 40-ship formation flies in each level, with
-  Bosses spiraling into their slots.
-- **Dive-bomb waves** — enemies break formation in V-formations and single runs,
-  curving toward your position and firing as they dive.
-- **Progressive difficulty** — each level dives faster, fires more, and sends more
-  simultaneous divers. The curve is capped at level 10 so the game stays beatable.
-- **Streak scoring** — consecutive kills without getting hit double your points
-  (×1 → ×6, the classic "streak" rule). Getting hit resets it to ×1.
-- **Power-ups** — enemies drop pickups: **Triple Shot**, **Rapid Fire**, **Shield**,
-  and **Extra Life**. Bosses always drop one.
-- **Two-player co-op** — P1 and P2 each have their own ship, lives, and score.
-- **Procedural sound** — lasers, explosions, dive whoosh, and the level-clear jingle
-  are all generated in code (silently degrades if numpy is unavailable).
-- **High scores** — persisted to `highscores.json`.
-- **Big screen** — rendered at 2× scale in a 1600×1200 window (everything is twice as large).
+A colorful, arcade-style **Galaga** clone built with [`pygame`](https://www.pygame.org).
+**Zero external assets** — every sprite is drawn with pygame primitives and every
+sound effect is synthesized at runtime with numpy, so the entire game ships in a
+single folder.
 
-## Install
+[![Python](https://img.shields.io/badge/Python-3.8%2B-4B8BBE?logo=python&logoColor=white)](https://www.python.org/)
+[![pygame](https://img.shields.io/badge/pygame-2.1%2B-699D66?logo=pygame)](https://www.pygame.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+</div>
+
+---
+
+## ✨ Features
+
+| | |
+| :-- | :-- |
+| 🐝 **Classic enemies** | Red **Bee** (fast & erratic), blue-green **Galaga** (medium), and the big two-part **Boss** (400 pts, takes 2 hits — the first splits it in half). |
+| 🛰️ **Choreographed entry** | The 40-ship formation flies in every level, with Bosses spiraling into their slots. |
+| 💥 **Dive-bomb waves** | Enemies break formation in V-formations and single runs, curving toward your position and firing as they dive. |
+| 📈 **Progressive difficulty** | Each level dives faster, fires more, and sends more simultaneous divers. The curve is capped at level 10 so the game stays beatable. |
+| 🔥 **Streak scoring** | Consecutive kills without getting hit double your points (×1 → ×6, the classic "streak" rule). Getting hit resets it to ×1. |
+| 🎁 **Power-ups** | Enemies drop **Triple Shot**, **Rapid Fire**, **Shield**, and **Extra Life**. Bosses always drop one. |
+| 👥 **Two-player co-op** | P1 and P2 each have their own ship, lives, and score. |
+| 🔊 **Procedural sound** | Lasers, explosions, dive whoosh, and the level-clear jingle are all generated in code (silently degrades if numpy is unavailable). |
+| 🏅 **High scores** | Persisted to `highscores.json`. |
+| 🖥️ **Any display** | Rendered at 2× scale; the window auto-fits your screen size. |
+
+## 📦 Install
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Run
+## 🎮 Run
 
 ```bash
 python main.py
 ```
 
-The game opens a large **1600×1200** window (2× scale). If that's bigger than
-your screen, run it fullscreen instead:
+The game opens a large **1600×1200** window (2× scale) and automatically
+shrinks to fit smaller displays (or scaled displays like 1440p at 175%),
+keeping the 4:3 aspect ratio. You can also resize the window manually, or
+fill the monitor entirely:
 
 ```bash
 python main.py --fullscreen
 ```
 
-Add `--selftest` to run a headless automated smoke test (no window needed):
+<details>
+<summary>🧪 Headless self-test (CI / no window needed)</summary>
 
 ```bash
-SDL_VIDEODRIVER=dummy python main.py --selftest
+python main.py --selftest   # prints SELFTEST OK on success
 ```
 
-## Controls
+</details>
+
+## 🎯 Controls
 
 | Action | Player 1 | Player 2 |
-| :--- | :--- | :--- |
+| :--- | :---: | :---: |
 | Move left | `A` | `←` |
 | Move right | `D` | `→` |
 | Fire | `Space` | `L` |
@@ -60,43 +73,53 @@ SDL_VIDEODRIVER=dummy python main.py --selftest
 | Menu / confirm | `Enter` | `Enter` |
 | Quit | `Esc` | `Esc` |
 
-## Scoring
+## 💯 Scoring
 
 | Enemy | Points |
-| :--- | :--- |
-| Bee | 50 |
-| Galaga | 100 |
-| Boss | 400 |
+| :--- | :---: |
+| 🐝 Bee | 50 |
+| 🛸 Galaga | 100 |
+| 👾 Boss | 400 |
 
-Points are multiplied by your current streak (×1–×6). A kill on a diving enemy is
-worth double its base value.
+Points are multiplied by your current streak (×1–×6). A kill on a **diving**
+enemy is worth double its base value.
 
-## Power-ups
+## 🎁 Power-ups
 
 | Pickup | Effect |
 | :--- | :--- |
-| ⚡ Rapid Fire | Faster fire rate for 8 s |
-| ✦ Triple Shot | 3-way spread for 10 s |
-| ◉ Shield | Absorbs one hit |
-| ♥ Extra Life | +1 life |
+| ⚡ **Rapid Fire** | Faster fire rate for 8 s |
+| ✦ **Triple Shot** | 3-way spread for 10 s |
+| ◉ **Shield** | Absorbs one hit |
+| ♥ **Extra Life** | +1 life |
 
-## Project layout
+## 🗂️ Project layout
 
 ```text
-main.py            entry point, game loop, state machine
-galaga/
-  config.py        screen size, palette, physics, difficulty curve
-  starfield.py     3-layer parallax scrolling stars
-  player.py        Player + PlayerBullet
-  enemies.py       enemy types, formation, entry paths, dive AI
-  particles.py     explosions, trails, screen shake, score popups
-  powerups.py      drop table, falling pickups, timed effects
-  levels.py        per-level scaling, level-clear detection
-  sound.py         procedural SFX (numpy + pygame.sndarray)
-  hud.py           HUD, menu, level intro, pause, game over
-highscores.json    created at runtime
+Galaga/
+├── main.py            entry point, game loop, state machine
+├── requirements.txt   pygame + numpy
+├── LICENSE            MIT
+└── galaga/
+    ├── config.py      screen size, palette, physics, difficulty curve
+    ├── starfield.py   3-layer parallax scrolling stars
+    ├── player.py      Player + PlayerBullet
+    ├── enemies.py     enemy types, formation, entry paths, dive AI
+    ├── particles.py   explosions, trails, screen shake, score popups
+    ├── powerups.py    drop table, falling pickups, timed effects
+    ├── levels.py      per-level scaling, level-clear detection
+    ├── sound.py       procedural SFX (numpy + pygame.sndarray)
+    └── hud.py         HUD, menu, level intro, pause, game over
 ```
 
-## License
+> `highscores.json` is created automatically at runtime.
+
+---
+
+<div align="center">
+
+## 📄 License
 
 Released under the [MIT License](LICENSE).
+
+</div>
