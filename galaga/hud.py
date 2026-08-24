@@ -1,4 +1,4 @@
-"""HUD and full-screen overlays: top bar, menu, wave intro, pause, game over."""
+'''HUD and full-screen overlays: top bar, menu, wave intro, pause, game over.'''
 
 import pygame
 
@@ -13,127 +13,165 @@ class HUD:
         self.font_l = pygame.font.Font(None, 48)
         self.font_xl = pygame.font.Font(None, 92)
 
-    # ------------------------------------------------------------------ top bar
-    def draw_top(self, surf, players, level, highscores):
+    def draw_top(self, surf: pygame.Surface, players: list,
+                 level: int, highscores: dict) -> None:
         # 1P block (left)
-        self._text(surf, "1UP", C.YELLOW, 16, 10, self.font_s)
-        s1 = self._text(surf, f"{players[0].score:07d}", C.WHITE, 16, 28, self.font_m)
+        self._text(surf, '1UP', C.YELLOW, 16, 10, self.font_s)
+        s1 = self._text(surf, f'{players[0].score:07d}', C.WHITE, 16, 28, self.font_m)
         m1 = players[0].multiplier_value
+
         if m1 > 1:
-            self._text(surf, f"x{m1} STREAK", C.ORANGE, s1.right + 8, 30, self.font_s)
+            self._text(surf, f'x{m1} STREAK', C.ORANGE, s1.right + 8, 30, self.font_s)
+
         # 2P block (right)
         if len(players) > 1:
-            label = self._text(surf, "2UP", C.CYAN, 0, 10, self.font_s, align="right", anchor_x=C.WIDTH - 16)
-            s2 = self._text(surf, f"{players[1].score:07d}", C.WHITE, 0, 28, self.font_m, align="right", anchor_x=C.WIDTH - 16)
+            label = self._text(surf, '2UP', C.CYAN, 0, 10, self.font_s,
+                               align='right', anchor_x=C.WIDTH - 16)
+
+            s2 = self._text(surf, f'{players[1].score:07d}', C.WHITE, 0, 28, self.font_m,
+                            align='right', anchor_x=C.WIDTH - 16)
+
             m2 = players[1].multiplier_value
+
             if m2 > 1:
-                self._text(surf, f"x{m2} STREAK", C.ORANGE, s2.left - 8, 30, self.font_s, align="right")
+                self._text(surf, f'x{m2} STREAK', C.ORANGE, s2.left - 8, 30, self.font_s,
+                           align='right')
+
         # high score (center)
-        hs = max(highscores.get("1p", 0), highscores.get("2p", 0))
-        self._text(surf, f"HIGH {hs:07d}", C.WHITE, C.WIDTH // 2, 10, self.font_s, align="center")
+        hs = max(highscores.get('1p', 0), highscores.get('2p', 0))
+        self._text(surf, f'HIGH {hs:07d}', C.WHITE, C.WIDTH // 2, 10, self.font_s,
+                   align='center')
+
         # wave (center, below)
-        self._text(surf, f"WAVE {level}", C.GREEN, C.WIDTH // 2, 30, self.font_m, align="center")
+        self._text(surf, f'WAVE {level}', C.GREEN, C.WIDTH // 2, 30, self.font_m,
+                   align='center')
+
         # lives as tiny ships
         for i, p in enumerate(players):
             base_x = 16 if i == 0 else C.WIDTH - 16
+
             for j in range(max(0, p.lives - 1)):  # spare ships (current one is on field)
                 x = base_x + j * 22 if i == 0 else base_x - j * 22 - 16
                 self._ship_icon(surf, x + 8, 58, C.GREEN)
+
         # enemy status (top right, small font)
         p = C.level_params(level)
-        status = (f"DIVE {int(p['dive_speed'])}   "
-                  f"FIRE {p['enemy_fire_chance']:.0%}   "
-                  f"DIVERS {p['max_divers']}")
-        self._text(surf, status, C.LIGHT_GRAY, 0, 74, self.font_xs,
-                   align="right", anchor_x=C.WIDTH - 16)
+        status = (f'DIVE {int(p["dive_speed"])}   '
+                  f'FIRE {p["enemy_fire_chance"]:.0%}   '
+                  f'DIVERS {p["max_divers"]}')
 
-    def _ship_icon(self, surf, x, y, color):
+        self._text(surf, status, C.LIGHT_GRAY, 0, 74, self.font_xs,
+                   align='right', anchor_x=C.WIDTH - 16)
+
+    def _ship_icon(self, surf: pygame.Surface, x: int, y: int, color: tuple) -> None:
         pts = [(x, y + 6), (x - 6, y - 5), (x - 2, y - 5), (x, y - 2),
                (x + 2, y - 5), (x + 6, y - 5), (x, y + 6)]
+
         pygame.draw.polygon(surf, color, pts)
 
-    # ------------------------------------------------------------------ overlays
-    def draw_menu(self, surf, highscores, selected_mode):
+    def draw_menu(self, surf: pygame.Surface, highscores: dict,
+                  selected_mode: int) -> None:
         # title with layered color
-        title = self.font_xl.render("GALAGA", True, C.RED)
-        t2 = self.font_xl.render("GALAGA", True, C.ORANGE)
+        title = self.font_xl.render('GALAGA', True, C.RED)
+        t2 = self.font_xl.render('GALAGA', True, C.ORANGE)
         surf.blit(t2, t2.get_rect(center=(C.WIDTH // 2, 150)))
         surf.blit(title, title.get_rect(center=(C.WIDTH // 2, 148)))
-        sub = self.font_m.render("CO-OP ARCADE ACTION", True, C.CYAN)
+        sub = self.font_m.render('CO-OP ARCADE ACTION', True, C.CYAN)
         surf.blit(sub, sub.get_rect(center=(C.WIDTH // 2, 205)))
 
         # mode select
-        opts = [("1 PLAYER", 1), ("2 PLAYERS (CO-OP)", 2)]
+        opts = [('1 PLAYER', 1), ('2 PLAYERS (CO-OP)', 2)]
         y = 290
+
         for text, mode in opts:
             color = C.WHITE if mode == selected_mode else C.GRAY
             img = self.font_l.render(text, True, color)
             surf.blit(img, img.get_rect(center=(C.WIDTH // 2 + (28 if mode == selected_mode else 0), y)))
+
             if mode == selected_mode:
-                arrow = self.font_l.render(">", True, C.YELLOW)
+                arrow = self.font_l.render('>', True, C.YELLOW)
                 surf.blit(arrow, (C.WIDTH // 2 - img.get_width() // 2 - 30, y - 22))
+
             y += 56
 
         # high scores
-        hs1 = highscores.get("1p", 0)
-        hs2 = highscores.get("2p", 0)
-        h1 = self.font_m.render(f"HIGH SCORE  1P: {hs1:07d}", True, C.YELLOW)
+        hs1 = highscores.get('1p', 0)
+        hs2 = highscores.get('2p', 0)
+        h1 = self.font_m.render(f'HIGH SCORE  1P: {hs1:07d}', True, C.YELLOW)
         surf.blit(h1, h1.get_rect(center=(C.WIDTH // 2, 430)))
-        h2 = self.font_m.render(f"HIGH SCORE  2P: {hs2:07d}", True, C.YELLOW)
+        h2 = self.font_m.render(f'HIGH SCORE  2P: {hs2:07d}', True, C.YELLOW)
         surf.blit(h2, h2.get_rect(center=(C.WIDTH // 2, 460)))
 
-        # footer hints (blinking handled by caller via alpha? keep static)
-        f1 = self.font_s.render("UP/DOWN: SELECT MODE      ENTER: START      P: PAUSE      ESC: QUIT", True, C.LIGHT_GRAY)
+        # footer hints
+        f1 = self.font_s.render('UP/DOWN: SELECT MODE      ENTER: START      P: PAUSE      ESC: QUIT',
+                                True, C.LIGHT_GRAY)
+
         surf.blit(f1, f1.get_rect(center=(C.WIDTH // 2, 540)))
-        f2 = self.font_s.render("P1: A/D MOVE + SPACE FIRE        P2: ARROWS MOVE + L FIRE", True, C.LIGHT_GRAY)
+        f2 = self.font_s.render('P1: A/D MOVE + SPACE FIRE        P2: ARROWS MOVE + L FIRE',
+                                True, C.LIGHT_GRAY)
+
         surf.blit(f2, f2.get_rect(center=(C.WIDTH // 2, 566)))
 
-    def draw_intro(self, surf, level, params):
-        banner = self.font_xl.render(f"WAVE {level}", True, C.YELLOW)
+    def draw_intro(self, surf: pygame.Surface, level: int, params: dict) -> None:
+        banner = self.font_xl.render(f'WAVE {level}', True, C.YELLOW)
         surf.blit(banner, banner.get_rect(center=(C.WIDTH // 2, 250)))
-        ready = self.font_l.render("GET READY", True, C.WHITE)
+        ready = self.font_l.render('GET READY', True, C.WHITE)
         surf.blit(ready, ready.get_rect(center=(C.WIDTH // 2, 330)))
+
         # difficulty readout
         p = params
         diff = self.font_m.render(
-            f"ENEMY FIRE {p['enemy_fire_chance']:.0%}   DIVE SPEED {int(p['dive_speed'])}   "
-            f"MAX DIVERS {p['max_divers']}", True, C.GREEN)
+            f'ENEMY FIRE {p["enemy_fire_chance"]:.0%}   DIVE SPEED {int(p["dive_speed"])}   '
+            f'MAX DIVERS {p["max_divers"]}', True, C.GREEN)
+
         surf.blit(diff, diff.get_rect(center=(C.WIDTH // 2, 395)))
 
-    def draw_pause(self, surf):
+    def draw_pause(self, surf: pygame.Surface) -> None:
         veil = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
         veil.fill((0, 0, 0, 150))
         surf.blit(veil, (0, 0))
-        t = self.font_xl.render("PAUSED", True, C.WHITE)
+
+        t = self.font_xl.render('PAUSED', True, C.WHITE)
         surf.blit(t, t.get_rect(center=(C.WIDTH // 2, C.HEIGHT // 2 - 20)))
-        h = self.font_m.render("PRESS P TO RESUME", True, C.LIGHT_GRAY)
+        h = self.font_m.render('PRESS P TO RESUME', True, C.LIGHT_GRAY)
         surf.blit(h, h.get_rect(center=(C.WIDTH // 2, C.HEIGHT // 2 + 40)))
 
-    def draw_game_over(self, surf, players, highscore_flag):
+    def draw_game_over(self, surf: pygame.Surface, players: list,
+                       highscore_flag: bool) -> None:
+
         veil = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
         veil.fill((0, 0, 0, 170))
         surf.blit(veil, (0, 0))
-        t = self.font_xl.render("GAME OVER", True, C.RED)
+
+        t = self.font_xl.render('GAME OVER', True, C.RED)
         surf.blit(t, t.get_rect(center=(C.WIDTH // 2, 220)))
+
         for i, p in enumerate(players):
-            label = "PLAYER 1" if i == 0 else "PLAYER 2"
-            line = self.font_l.render(f"{label}: {p.score:07d}", True, C.WHITE)
+            label = 'PLAYER 1' if i == 0 else 'PLAYER 2'
+            line = self.font_l.render(f'{label}: {p.score:07d}', True, C.WHITE)
             surf.blit(line, line.get_rect(center=(C.WIDTH // 2, 310 + i * 50)))
+
         if highscore_flag:
-            flag = self.font_l.render("*** NEW HIGH SCORE ***", True, C.YELLOW)
+            flag = self.font_l.render('*** NEW HIGH SCORE ***', True, C.YELLOW)
             surf.blit(flag, flag.get_rect(center=(C.WIDTH // 2, 410)))
-        h = self.font_m.render("PRESS ENTER FOR MENU", True, C.LIGHT_GRAY)
+
+        h = self.font_m.render('PRESS ENTER FOR MENU', True, C.LIGHT_GRAY)
         surf.blit(h, h.get_rect(center=(C.WIDTH // 2, 480)))
 
-    # ------------------------------------------------------------------ helper
-    def _text(self, surf, text, color, x, y, font, align="left", anchor_x=None):
+    def _text(self, surf: pygame.Surface, text: str, color: tuple, x: int, y: int,
+              font: pygame.font.Font, align: str = 'left',
+              anchor_x: int = None) -> pygame.Rect:
+
         img = font.render(text, True, color)
         r = img.get_rect()
-        if align == "left":
+
+        if align == 'left':
             r.topleft = (x, y)
-        elif align == "center":
+        elif align == 'center':
             r.center = (anchor_x if anchor_x is not None else C.WIDTH // 2, y + r.height // 2)
-        elif align == "right":
+        elif align == 'right':
             r.topright = (anchor_x if anchor_x is not None else C.WIDTH - x, y)
+
         surf.blit(img, r)
+
         return r

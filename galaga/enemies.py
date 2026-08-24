@@ -1,13 +1,15 @@
-"""Enemy fleet: types, formation, entry choreography, and dive-bomb AI.
+'''Enemy fleet: types, formation, entry choreography, and dive-bomb AI.
 
 This is the heart of the game. A :class:`Fleet` owns 40 enemies and drives:
   * the whole-formation side-to-side wobble,
   * the staggered fly-in (choreographed entry) at the start of each level,
-  * periodic dive-bomb waves (V-formations and single runs) that curve toward
-    the player and fire on the way down,
+  * periodic dive-bomb waves (V-formations and single runs) that curve
+    toward the player and fire on the way down,
+
   * re-entry of divers back into the formation, and
   * the enemy bullet list.
-"""
+
+'''
 
 import math
 import random
@@ -18,95 +20,111 @@ from . import config as C
 
 
 # Enemy states
-ENTRY = "entry"
-FORMATION = "formation"
-DIVE = "dive"
-REENTER = "reenter"
-DEAD = "dead"
+ENTRY = 'entry'
+FORMATION = 'formation'
+DIVE = 'dive'
+REENTER = 'reenter'
+DEAD = 'dead'
 
 
 class Enemy:
     __slots__ = (
-        "etype", "slot_index", "slot", "state", "x", "y", "vx", "vy",
-        "anim_t", "entry_t", "entry_start", "entry_duration", "entry_started",
-        "dive_delay", "dive_target_offset", "dive_fire_t", "hits", "split",
-        "p0", "p1", "spiral_side", "flash",
+        'etype', 'slot_index', 'slot', 'state', 'x', 'y', 'vx', 'vy',
+        'anim_t', 'entry_t', 'entry_start', 'entry_duration', 'entry_started',
+        'dive_delay', 'dive_target_offset', 'dive_fire_t', 'hits', 'split',
+        'p0', 'p1', 'spiral_side', 'flash',
     )
 
-    def __init__(self, etype, slot_index, slot):
+    def __init__(self, etype: str, slot_index: int, slot: tuple):
         self.etype = etype
         self.slot_index = slot_index
         self.slot = slot
         self.state = ENTRY
+
         self.x = 0.0
         self.y = -60.0
         self.vx = 0.0
         self.vy = 0.0
+
         self.anim_t = random.uniform(0, math.tau)
+
         self.entry_t = 0.0
         self.entry_start = 0.0
         self.entry_duration = 1.0
         self.entry_started = False
+
         self.dive_delay = 0.0
         self.dive_target_offset = 0.0
         self.dive_fire_t = random.uniform(0.2, 0.8)
-        self.hits = 2 if etype == "boss" else 1
+
+        self.hits = 2 if etype == 'boss' else 1
         self.split = False
+
         self.p0 = (0.0, 0.0)
         self.p1 = (0.0, 0.0)
+
         self.spiral_side = 1 if random.random() < 0.5 else -1
         self.flash = 0.0
 
-    # ------------------------------------------------------------------
-    def size(self):
-        if self.etype == "boss":
+    def size(self) -> int:
+        if self.etype == 'boss':
             return 34
-        if self.etype == "galaga":
+
+        if self.etype == 'galaga':
             return 24
+
         return 20
 
-    def rect(self):
+    def rect(self) -> pygame.Rect:
         s = self.size()
         w = s + 6
         h = s
+
         return pygame.Rect(int(self.x - w / 2), int(self.y - h / 2), w, h)
 
-    def score(self, diving):
-        base = {"bee": C.SCORE_BEE, "galaga": C.SCORE_GALAGA, "boss": C.SCORE_BOSS}[self.etype]
+    def score(self, diving: bool) -> int:
+        base = {'bee': C.SCORE_BEE, 'galaga': C.SCORE_GALAGA, 'boss': C.SCORE_BOSS}[self.etype]
+
         if diving:
             base *= C.DIVE_BONUS_MULTIPLIER
+
         return base
 
-    def color(self):
-        return {"bee": C.BEE_COLOR, "galaga": C.GALAGA_COLOR, "boss": C.BOSS_COLOR}[self.etype]
+    def color(self) -> tuple:
+        return {'bee': C.BEE_COLOR, 'galaga': C.GALAGA_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
 
-    # ------------------------------------------------------------------
-    def slot_world(self, wobble_x):
+    def slot_world(self, wobble_x: float) -> tuple:
         return C.slot_to_world(self.slot_index, self.slot, wobble_x)
 
-    def _begin_entry(self, wobble_x, params):
+    def _begin_entry(self, wobble_x: float, params: dict) -> None:
         self.entry_started = True
-        self.entry_duration = params["entry_path_time"]
+        self.entry_duration = params['entry_path_time']
         side = self.spiral_side
         sx, sy = self.slot_world(wobble_x)
-        if self.etype == "boss":
-            self.entry_duration = params["entry_path_time"] + 0.8
+
+        if self.etype == 'boss':
+            self.entry_duration = params['entry_path_time'] + 0.8
             # off-screen start so the boss doesn't pop in at the corner
             self.p0 = (sx + side * random.uniform(140, 220), -70.0)
             self.p1 = (C.WIDTH / 2 + side * random.uniform(120, 300), random.uniform(40, 100))
+
             return
+
         # quadratic bezier start points (alternate sides for a nice spread)
         self.p0 = (sx + side * random.uniform(120, 260), -50.0)
         self.p1 = (C.WIDTH / 2 + side * random.uniform(120, 320), random.uniform(60, 140))
 
-    def update_entry(self, dt, wobble_x):
+    def update_entry(self, dt: float, wobble_x: float) -> bool:
         if not self.entry_started:
             self.x, self.y = self.p0 if self.p0 else (self.x, -60.0)
+
             return False
+
         self.entry_t += dt / self.entry_duration
         t = min(1.0, self.entry_t)
         tx, ty = self.slot_world(wobble_x)
-        if self.etype == "boss":
+
+        if self.etype == 'boss':
             # spiral into the slot
             ang = self.spiral_side * (3.5 - 3.5 * t) * math.pi
             rad = (1 - t) * 260.0
@@ -117,25 +135,29 @@ class Enemy:
             u = 1 - t
             self.x = u * u * self.p0[0] + 2 * u * t * self.p1[0] + t * t * tx
             self.y = u * u * self.p0[1] + 2 * u * t * self.p1[1] + t * t * ty
+
         if t >= 1.0:
             self.state = FORMATION
             self.x, self.y = tx, ty
+
             return True
+
         return False
 
 
 class EnemyBullet:
-    __slots__ = ("x", "y", "vx", "vy", "alive", "homing")
+    __slots__ = ('x', 'y', 'vx', 'vy', 'alive', 'homing')
 
-    def __init__(self, x, y, vx, vy, homing=False):
+    def __init__(self, x: float, y: float, vx: float, vy: float, homing: bool = False):
         self.x, self.y = x, y
         self.vx, self.vy = vx, vy
         self.alive = True
         self.homing = homing
 
-    def update(self, dt, players=None):
+    def update(self, dt: float, players: list = None) -> None:
         if self.homing and players:
             alive = [p for p in players if p.alive]
+
             if alive:
                 tgt = random.choice(alive)
                 dx, dy = tgt.x - self.x, tgt.y - self.y
@@ -144,23 +166,26 @@ class EnemyBullet:
                 self.vx += (dx / d - self.vx / sp) * 1.6 * dt
                 self.vy += (dy / d - self.vy / sp) * 1.6 * dt
                 self.vx, self.vy = _rescale(self.vx, self.vy, sp)
+
         self.x += self.vx * dt
         self.y += self.vy * dt
+
         if self.y > C.HEIGHT + 20 or self.x < -20 or self.x > C.WIDTH + 20 or self.y < -40:
             self.alive = False
 
-    def rect(self):
+    def rect(self) -> pygame.Rect:
         return pygame.Rect(int(self.x - 3), int(self.y - C.ENEMY_BULLET_H / 2),
                            6, C.ENEMY_BULLET_H)
 
-    def draw(self, surf, ox, oy):
+    def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
         x, y = int(self.x + ox), int(self.y + oy)
         pygame.draw.circle(surf, C.ORANGE, (x, y), 4)
         pygame.draw.rect(surf, C.YELLOW, (x - 1, y - 6, 3, 12))
 
 
-def _rescale(vx, vy, sp):
+def _rescale(vx: float, vy: float, sp: float) -> tuple:
     m = math.hypot(vx, vy) or 1.0
+
     return vx / m * sp, vy / m * sp
 
 
@@ -174,24 +199,26 @@ class Fleet:
         self.params = C.level_params(1)
         self.level = 1
 
-    # ------------------------------------------------------------------
-    def setup(self, level):
+    def setup(self, level: int) -> None:
         self.level = level
         self.params = C.level_params(level)
         self.wobble_t = 0.0
         self.fleet_time = 0.0
         self.bullets.clear()
         self.dive_timer = 1.6
+
         self.enemies = []
         slots = C.formation_slots()
+
         for i, (etype, col, row) in enumerate(slots):
             e = Enemy(etype, i, (etype, col, row))
             self._assign_entry(e, i, level)
             self.enemies.append(e)
 
-    def _assign_entry(self, e, i, level):
-        delay = self.params["entry_delay"]
-        if e.etype == "boss":
+    def _assign_entry(self, e: Enemy, i: int, level: int) -> None:
+        delay = self.params['entry_delay']
+
+        if e.etype == 'boss':
             # bosses enter first, one after another
             e.entry_start = 0.5 + (i % 4) * 0.28
         else:
@@ -199,31 +226,31 @@ class Fleet:
             non_boss_index = i - 4
             group = non_boss_index // 6
             e.entry_start = 0.9 + group * delay + random.uniform(0.0, 0.12)
-        # precompute an off-screen start position so it doesn't pop in at (0,0)
+
+        # precompute an off-screen start position so it doesn't pop in
+        # at (0,0)
         e._begin_entry(0.0, self.params)
         e.entry_started = False  # wait until its entry_start time
         e.x, e.y = e.p0
 
-    # ------------------------------------------------------------------
     @property
-    def wobble_x(self):
-        return math.sin(self.wobble_t * self.params["formation_wobble_speed"]) * \
-            self.params["formation_wobble_amp"]
+    def wobble_x(self) -> float:
+        return (math.sin(self.wobble_t * self.params['formation_wobble_speed'])
+                * self.params['formation_wobble_amp'])
 
-    def alive_enemies(self):
+    def alive_enemies(self) -> list:
         return [e for e in self.enemies if e.state != DEAD]
 
-    def all_in_formation(self):
-        # DEAD enemies count as "settled" — a kill during the entry fly-in must
-        # not stall the entry->active transition (it used to lock the level
-        # in "entry" forever, so no further waves ever started).
+    def all_in_formation(self) -> bool:
+        # DEAD enemies count as 'settled' — a kill during the entry fly-in
+        # must not stall the entry->active transition (it used to lock the
+        # level in 'entry' forever, so no further waves ever started).
         return all(e.state in (FORMATION, DIVE, REENTER, DEAD) for e in self.enemies)
 
-    def diving_count(self):
+    def diving_count(self) -> int:
         return sum(1 for e in self.enemies if e.state == DIVE)
 
-    # ------------------------------------------------------------------
-    def update(self, dt, players, effects, sound):
+    def update(self, dt: float, players: list, effects: 'Effects', sound: 'SoundBank') -> None:
         self.wobble_t += dt
         self.fleet_time += dt
         wx = self.wobble_x
@@ -233,6 +260,7 @@ class Fleet:
             if e.state == ENTRY:
                 if not e.entry_started and self.fleet_time >= e.entry_start:
                     e._begin_entry(wx, self.params)
+
                 e.update_entry(dt, wx)
 
         # --- formation & dive ---
@@ -248,48 +276,62 @@ class Fleet:
         # --- dive wave scheduling ---
         if self.all_in_formation():
             self.dive_timer -= dt
+
             if self.dive_timer <= 0:
                 self._start_dive_wave(players, sound)
-                self.dive_timer = self.params["dive_interval"] * random.uniform(0.75, 1.25)
+                self.dive_timer = self.params['dive_interval'] * random.uniform(0.75, 1.25)
 
         # --- enemy bullets ---
         for b in self.bullets:
             b.update(dt, players)
+
         self.bullets = [b for b in self.bullets if b.alive]
 
-    # ------------------------------------------------------------------
-    def _start_dive_wave(self, players, sound):
-        if self.diving_count() >= self.params["max_divers"]:
+    def _start_dive_wave(self, players: list, sound: 'SoundBank') -> None:
+        if self.diving_count() >= self.params['max_divers']:
             return
+
         candidates = [e for e in self.enemies if e.state == FORMATION]
+
         if not candidates:
             return
+
         # Decide wave shape: a V of 3-5, or a single/double run
         r = random.random()
+
         if r < 0.45:
             n = random.randint(3, 5)
-            shape = "v"
+            shape = 'v'
         else:
             n = random.randint(1, 2)
-            shape = "run"
-        n = max(1, min(n, len(candidates), self.params["max_divers"]))
+            shape = 'run'
+
+        n = max(1, min(n, len(candidates), self.params['max_divers']))
+
         wave = random.sample(candidates, n)
         mid = len(wave) // 2
+
         for i, e in enumerate(wave):
             e.state = DIVE
-            e.dive_delay = 0.0 if shape == "run" else abs(i - mid) * 0.12
-            e.dive_target_offset = (i - mid) * 46.0 if shape == "v" else 0.0
+            e.dive_delay = 0.0 if shape == 'run' else abs(i - mid) * 0.12
+            e.dive_target_offset = (i - mid) * 46.0 if shape == 'v' else 0.0
             e.vx = 0.0
             e.vy = 60.0
             e.dive_fire_t = random.uniform(0.3, 0.9)
-        sound.play("whoosh", 0.5)
 
-    def _update_dive(self, e, dt, players, effects, sound):
+        sound.play('whoosh', 0.5)
+
+    def _update_dive(self, e: Enemy, dt: float, players: list,
+                     effects: 'Effects', sound: 'SoundBank') -> None:
+
         if e.dive_delay > 0:
             e.dive_delay -= dt
             e.y += e.vy * dt * 0.4
+
             return
+
         alive = [p for p in players if p.alive]
+
         if alive:
             tgt = random.choice(alive)
             target_x = tgt.x + e.dive_target_offset
@@ -297,23 +339,28 @@ class Fleet:
         else:
             target_x = C.WIDTH / 2 + e.dive_target_offset
             target_y = e.y + 220.0
+
         dx, dy = target_x - e.x, target_y - e.y
         d = math.hypot(dx, dy) or 1.0
-        sp = self.params["dive_speed"]
+        sp = self.params['dive_speed']
         desired_vx, desired_vy = dx / d * sp, dy / d * sp
+
         # steering toward desired velocity -> smooth curve
         turn = 2.4
         e.vx += (desired_vx - e.vx) * min(1.0, turn * dt)
         e.vy += (desired_vy - e.vy) * min(1.0, turn * dt)
+
         # bees wobble
-        if e.etype == "bee":
+        if e.etype == 'bee':
             e.x += math.sin(self.fleet_time * 8 + e.anim_t) * 40 * dt
+
         e.x += e.vx * dt
         e.y += e.vy * dt
         e.anim_t += dt * 10
 
         # fire while diving
         e.dive_fire_t -= dt
+
         if e.dive_fire_t <= 0 and alive and e.y < C.HEIGHT - 120:
             self._fire_aimed(e, players, sound)
             e.dive_fire_t = random.uniform(0.5, 1.1)
@@ -327,126 +374,150 @@ class Fleet:
             e.p0 = (sx + side * 160, -50)
             e.p1 = (C.WIDTH / 2 + side * 200, 90)
 
-    def _update_reenter(self, e, dt, wx):
-        e.entry_t += dt / (self.params["entry_path_time"] * 0.8)
+    def _update_reenter(self, e: Enemy, dt: float, wx: float) -> None:
+        e.entry_t += dt / (self.params['entry_path_time'] * 0.8)
         t = min(1.0, e.entry_t)
         u = 1 - t
         tx, ty = e.slot_world(wx)
         e.x = u * u * e.p0[0] + 2 * u * t * e.p1[0] + t * t * tx
         e.y = u * u * e.p0[1] + 2 * u * t * e.p1[1] + t * t * ty
         e.anim_t += dt * 8
+
         if t >= 1.0:
             e.state = FORMATION
             e.x, e.y = tx, ty
 
-    def _fire_aimed(self, e, players, sound):
+    def _fire_aimed(self, e: Enemy, players: list, sound: 'SoundBank') -> None:
         alive = [p for p in players if p.alive]
+
         if not alive:
             return
+
         tgt = random.choice(alive)
         dx, dy = tgt.x - e.x, tgt.y - e.y
         d = math.hypot(dx, dy) or 1.0
-        sp = self.params["enemy_bullet_speed"]
-        homing = e.etype == "boss" and random.random() < 0.5
+        sp = self.params['enemy_bullet_speed']
+        homing = e.etype == 'boss' and random.random() < 0.5
         self.bullets.append(EnemyBullet(e.x, e.y + 10, dx / d * sp, dy / d * sp, homing))
 
-    def formation_fire(self, players, sound, dt):
-        """Occasional stray fire from enemies sitting in formation."""
-        if random.random() < self.params["enemy_fire_chance"] * dt * 2.0:
+    def formation_fire(self, players: list, sound: 'SoundBank', dt: float) -> None:
+        '''Occasional stray fire from enemies sitting in formation.'''
+        if random.random() < self.params['enemy_fire_chance'] * dt * 2.0:
             cands = [e for e in self.enemies if e.state == FORMATION]
+
             if cands:
                 e = random.choice(cands)
                 self._fire_aimed(e, players, sound)
 
-    # ------------------------------------------------------------------
-    def hit_enemy(self, e, effects, sound):
-        """Apply a hit to an enemy. Returns points scored (0 if still alive)."""
+    def hit_enemy(self, e: Enemy, effects: 'Effects', sound: 'SoundBank') -> int:
+        '''Apply a hit to an enemy. Returns points scored (0 if still alive).'''
         if e.state == DEAD:
             return 0
+
         diving = e.state == DIVE  # capture before any state mutation
         e.hits -= 1
+
         if e.hits > 0:
             # boss first hit -> split
             e.split = True
             e.flash = 0.15
             effects.spark(e.x, e.y, e.color(), 14, 180, 0.4)
-            sound.play("explosion_small")
+            sound.play('explosion_small')
+
             return 0
+
         # destroyed
         e.state = DEAD
         color = e.color()
-        if e.etype == "boss":
+
+        if e.etype == 'boss':
             effects.explosion(e.x, e.y, C.WHITE, 20, 200, 0.6, 3)
             effects.shake(C.BOSS_SHAKE_MAGNITUDE, C.BOSS_SHAKE_DURATION)
             effects.flash(color, 0.12)
-            sound.play("explosion_boss")
-        elif e.etype == "galaga":
+            sound.play('explosion_boss')
+        elif e.etype == 'galaga':
             effects.explosion(e.x, e.y, color, 26, 250, 0.6, 3)
             effects.shake(C.SHAKE_MAGNITUDE, C.SHAKE_DURATION)
-            sound.play("explosion_small")
+            sound.play('explosion_small')
         else:
             effects.explosion(e.x, e.y, color, 18, 200, 0.5, 3)
             effects.spark(e.x, e.y, C.WHITE, 8, 140, 0.3)
-            sound.play("explosion_small")
+            sound.play('explosion_small')
+
         return e.score(diving)
 
-    # ------------------------------------------------------------------
-    def draw(self, surf, ox, oy):
+    def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
         for e in self.enemies:
             if e.state == DEAD:
                 continue
+
             if e.state == ENTRY and not e.entry_started:
                 continue
+
             self._draw_enemy(surf, e, ox, oy)
+
         for b in self.bullets:
             b.draw(surf, ox, oy)
 
-    def _draw_enemy(self, surf, e, ox, oy):
+    def _draw_enemy(self, surf: pygame.Surface, e: Enemy, ox: float, oy: float) -> None:
         x, y = int(e.x + ox), int(e.y + oy)
+
         if e.flash > 0:
             e.flash -= 0.016
             col = C.WHITE
         else:
             col = e.color()
+
         flap = math.sin(e.anim_t) * 0.5 + 0.5  # 0..1 wing flap
-        if e.etype == "bee":
+
+        if e.etype == 'bee':
             self._draw_bee(surf, x, y, col, flap)
-        elif e.etype == "galaga":
+        elif e.etype == 'galaga':
             self._draw_galaga(surf, x, y, col, flap)
         else:
             self._draw_boss(surf, x, y, col, flap, e.split)
 
-    def _draw_bee(self, surf, x, y, col, flap):
+    def _draw_bee(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
         # wings
         wing = int(6 + 5 * flap)
         pygame.draw.ellipse(surf, (200, 220, 255), (x - 12, y - 6 - wing, 9, wing + 6))
         pygame.draw.ellipse(surf, (200, 220, 255), (x + 3, y - 6 - wing, 9, wing + 6))
+
         # body
         pygame.draw.ellipse(surf, col, (x - 6, y - 8, 12, 18))
+
         # stripes
         pygame.draw.line(surf, C.DARK_RED, (x - 6, y - 2), (x + 6, y - 2), 2)
         pygame.draw.line(surf, C.DARK_RED, (x - 5, y + 3), (x + 5, y + 3), 2)
+
         # eyes
         pygame.draw.circle(surf, C.WHITE, (x - 3, y - 6), 1)
         pygame.draw.circle(surf, C.WHITE, (x + 3, y - 6), 1)
 
-    def _draw_galaga(self, surf, x, y, col, flap):
+    def _draw_galaga(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
         # side fins (flap)
         fin = int(4 + 6 * flap)
         pygame.draw.polygon(surf, C.BLUE, [(x - 8, y), (x - 8 - fin, y - 6), (x - 8 - fin, y + 4)])
         pygame.draw.polygon(surf, C.BLUE, [(x + 8, y), (x + 8 + fin, y - 6), (x + 8 + fin, y + 4)])
+
         # body
         pygame.draw.ellipse(surf, col, (x - 8, y - 10, 16, 20))
+
         # head
         pygame.draw.circle(surf, C.WHITE, (x, y - 8), 4)
+
         # tail
         pygame.draw.polygon(surf, col, [(x - 4, y + 8), (x, y + 14), (x + 4, y + 8)])
+
         # eyes
         pygame.draw.circle(surf, C.RED, (x - 2, y - 9), 1)
         pygame.draw.circle(surf, C.RED, (x + 2, y - 9), 1)
 
-    def _draw_boss(self, surf, x, y, col, flap, split):
+    def _draw_boss(self, surf: pygame.Surface, x: int, y: int, col: tuple,
+                   flap: float, split: bool) -> None:
+
         gap = 4 if split else 0
+
         # two halves
         for sgn in (-1, 1):
             hx = x + sgn * (4 + gap)
@@ -457,10 +528,12 @@ class Fleet:
             # body half
             pygame.draw.ellipse(surf, col, (hx - 6, y - 12, 12, 24))
             pygame.draw.ellipse(surf, C.DARK_RED, (hx - 4, y - 8, 8, 16))
+
         # central face
         pygame.draw.circle(surf, C.WHITE, (x, y - 6), 4)
         pygame.draw.circle(surf, C.YELLOW, (x - 2, y - 6), 1)
         pygame.draw.circle(surf, C.YELLOW, (x + 2, y - 6), 1)
+
         # mandibles
         pygame.draw.line(surf, col, (x - 3, y + 8), (x - 6, y + 14), 2)
         pygame.draw.line(surf, col, (x + 3, y + 8), (x + 6, y + 14), 2)
