@@ -12,6 +12,12 @@ class Star:
     __slots__ = ('x', 'y', 'speed', 'size', 'color', 'twinkle')
 
     def __init__(self, layer: int) -> None:
+        '''
+        Create a star in a parallax layer.
+
+        Args:
+            layer: parallax layer index (0 = farthest).
+        '''
         self.x = random.uniform(0, C.WIDTH)
         self.y = random.uniform(0, C.HEIGHT)
 
@@ -28,6 +34,12 @@ class Star:
 
 class Starfield:
     def __init__(self, count: tuple = (50, 34, 18)) -> None:
+        '''
+        Create the starfield.
+
+        Args:
+            count: number of stars to spawn.
+        '''
         self.stars = []
 
         for layer in range(3):
@@ -37,6 +49,13 @@ class Starfield:
         self.t = 0.0
 
     def update(self, dt: float, speed_mult: float = 1.0) -> None:
+        '''
+        Scroll the stars downward (parallax by layer).
+
+        Args:
+            dt: frame delta in seconds.
+            speed_mult: global speed multiplier.
+        '''
         self.t += dt
 
         for s in self.stars:
@@ -47,6 +66,12 @@ class Starfield:
                 s.x = random.uniform(0, C.WIDTH)
 
     def draw(self, surf: pygame.Surface) -> None:
+        '''
+        Draw the stars.
+
+        Args:
+            surf: surface to draw on.
+        '''
         surf.fill(C.BLACK)
 
         # Subtle vertical nebula gradient bands

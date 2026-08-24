@@ -80,11 +80,11 @@ DIVE_INTERVAL_DROP = 0.22      # faster each level
 DIVE_INTERVAL_MIN = 0.85
 DIVE_BASE_SPEED = 185.0
 DIVE_SPEED_GROWTH = 14.0
-DIVE_SPEED_MAX = 330.0
+DIVE_SPEED_MAX = 400.0
 FIRE_CHANCE_GROWTH = 0.065
-FIRE_CHANCE_MAX = 0.85
+FIRE_CHANCE_MAX = 0.9
 MAX_DIVERS_GROWTH = 2          # +1 simultaneous diver per 2 levels
-MAX_DIVERS_CAP = 4
+MAX_DIVERS_CAP = 6
 
 ENTRY_BASE_DELAY = 0.55        # s between entry groups at level 1
 ENTRY_DELAY_DROP = 0.05
@@ -120,6 +120,17 @@ HIGHSCORE_FILE = 'highscores.json'
 
 
 def clamp(v: float, lo: float, hi: float) -> float:
+    '''
+    Clamp v to the inclusive range [lo, hi].
+
+    Args:
+        v: value to clamp.
+        lo: lower bound.
+        hi: upper bound.
+
+    Returns:
+        The clamped value.
+    '''
     return max(lo, min(hi, v))
 
 

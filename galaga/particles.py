@@ -13,6 +13,19 @@ class Particle:
 
     def __init__(self, x: float, y: float, vx: float, vy: float, life: float,
                  color: tuple, size: int = 3, drag: float = 2.0):
+        '''
+        Create a particle with position, velocity, and lifetime.
+
+        Args:
+            x: start x in world px.
+            y: start y in world px.
+            vx: x velocity in px/s.
+            vy: y velocity in px/s.
+            life: lifetime in seconds.
+            color: particle color.
+            size: radius in px.
+            drag: velocity damping factor per second.
+        '''
 
         self.x, self.y = x, y
         self.vx, self.vy = vx, vy
@@ -22,6 +35,12 @@ class Particle:
         self.drag = drag
 
     def update(self, dt: float) -> None:
+        '''
+        Advance position and lifetime.
+
+        Args:
+            dt: frame delta in seconds.
+        '''
         self.life -= dt
         self.x += self.vx * dt
         self.y += self.vy * dt
@@ -29,6 +48,14 @@ class Particle:
         self.vy -= self.vy * self.drag * dt
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
+        '''
+        Draw the particle (fades out as it dies).
+
+        Args:
+            surf: surface to draw on.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
         k = max(0.0, self.life / self.max_life)
         size = max(1, int(self.size * k))
         col = tuple(int(c * (0.4 + 0.6 * k)) for c in self.color)
@@ -39,17 +66,42 @@ class ScorePopup:
     __slots__ = ('x', 'y', 'text', 'life', 'max_life', 'color')
 
     def __init__(self, x: float, y: float, text: str, color: tuple, life: float = 0.9):
+        '''
+        Create a floating score popup.
+
+        Args:
+            x: start x in world px.
+            y: start y in world px.
+            text: score text to show.
+            color: text color.
+            life: lifetime in seconds.
+        '''
         self.x, self.y = x, y
         self.text = text
         self.color = color
         self.life = self.max_life = life
 
     def update(self, dt: float) -> None:
+        '''
+        Advance the rise and fade.
+
+        Args:
+            dt: frame delta in seconds.
+        '''
         self.life -= dt
         self.y -= 34 * dt
 
     def draw(self, surf: pygame.Surface, font: pygame.font.Font,
              ox: float, oy: float) -> None:
+        '''
+        Draw the popup text.
+
+        Args:
+            surf: surface to draw on.
+            font: font to render with.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
 
         if self.life <= 0:
             return
@@ -64,6 +116,7 @@ class ScorePopup:
 class Effects:
     '''Holds particles, popups, and the screen-shake state.'''
     def __init__(self):
+        '''Create empty effect lists and reset screen shake/flash.'''
         self.particles = []
         self.popups = []
 
@@ -76,6 +129,18 @@ class Effects:
 
     def explosion(self, x: float, y: float, color: tuple, count: int = 22,
                   speed: float = 220.0, life: float = 0.55, size: int = 3) -> None:
+        '''
+        Spawn a burst of particles at a point.
+
+        Args:
+            x: burst center x in world px.
+            y: burst center y in world px.
+            color: particle color.
+            count: number of particles.
+            speed: radial speed in px/s.
+            life: particle lifetime in seconds.
+            size: particle radius in px.
+        '''
 
         for _ in range(count):
             ang = random.uniform(0, math.tau)
@@ -94,6 +159,17 @@ class Effects:
 
     def spark(self, x: float, y: float, color: tuple, count: int = 6,
               speed: float = 120.0, life: float = 0.3) -> None:
+        '''
+        Spawn a small spark burst (hit feedback).
+
+        Args:
+            x: burst center x in world px.
+            y: burst center y in world px.
+            color: particle color.
+            count: number of particles.
+            speed: radial speed in px/s.
+            life: particle lifetime in seconds.
+        '''
 
         for _ in range(count):
             ang = random.uniform(0, math.tau)
@@ -103,9 +179,25 @@ class Effects:
                          random.uniform(life * 0.5, life), color, 2))
 
     def popup(self, x: float, y: float, text: str, color: tuple) -> None:
+        '''
+        Add a floating score popup.
+
+        Args:
+            x: popup x in world px.
+            y: popup y in world px.
+            text: score text to show.
+            color: text color.
+        '''
         self.popups.append(ScorePopup(x, y, text, color))
 
     def shake(self, magnitude: float, duration: float) -> None:
+        '''
+        Start a screen shake.
+
+        Args:
+            magnitude: shake amplitude in px.
+            duration: shake duration in seconds.
+        '''
         # keep the strongest shake currently active
         if self.shake_t <= 0 or magnitude > self.shake_mag:
             self.shake_mag = magnitude
@@ -113,10 +205,23 @@ class Effects:
             self.shake_t = duration
 
     def flash(self, color: tuple, duration: float = 0.12) -> None:
+        '''
+        Start a full-screen flash.
+
+        Args:
+            color: flash color.
+            duration: flash duration in seconds.
+        '''
         self.flash_color = color
         self.flash_t = duration
 
     def update(self, dt: float) -> None:
+        '''
+        Age all effects and drop expired ones.
+
+        Args:
+            dt: frame delta in seconds.
+        '''
         for p in self.particles:
             p.update(dt)
 
@@ -134,6 +239,7 @@ class Effects:
             self.flash_t -= dt
 
     def offset(self) -> tuple:
+        '''Current screen-shake offset as (dx, dy) in px.'''
         if self.shake_t <= 0:
             return 0, 0
 
@@ -144,6 +250,15 @@ class Effects:
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float,
              popup_font: pygame.font.Font) -> None:
+        '''
+        Draw all particles and score popups.
+
+        Args:
+            surf: surface to draw on.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+            popup_font: font for score popups.
+        '''
 
         for p in self.particles:
             p.draw(surf, ox, oy)

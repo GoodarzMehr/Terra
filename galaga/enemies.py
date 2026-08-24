@@ -36,6 +36,14 @@ class Enemy:
     )
 
     def __init__(self, etype: str, slot_index: int, slot: tuple):
+        '''
+        Create an enemy of the given type in its formation slot.
+
+        Args:
+            etype: enemy type ('bee', 'galaga', or 'boss').
+            slot_index: index of this enemy's formation slot.
+            slot: (col, row) of the formation slot.
+        '''
         self.etype = etype
         self.slot_index = slot_index
         self.slot = slot
@@ -67,6 +75,7 @@ class Enemy:
         self.flash = 0.0
 
     def size(self) -> int:
+        '''Side length in px of this enemy's hitbox.'''
         if self.etype == 'boss':
             return 34
 
@@ -76,6 +85,7 @@ class Enemy:
         return 20
 
     def rect(self) -> pygame.Rect:
+        '''Current screen-space hitbox rect.'''
         s = self.size()
         w = s + 6
         h = s
@@ -83,6 +93,15 @@ class Enemy:
         return pygame.Rect(int(self.x - w / 2), int(self.y - h / 2), w, h)
 
     def score(self, diving: bool) -> int:
+        '''
+        Points awarded for this kill.
+
+        Args:
+            diving: double the base score when the enemy is diving.
+
+        Returns:
+            The score value.
+        '''
         base = {'bee': C.SCORE_BEE, 'galaga': C.SCORE_GALAGA, 'boss': C.SCORE_BOSS}[self.etype]
 
         if diving:
@@ -91,12 +110,29 @@ class Enemy:
         return base
 
     def color(self) -> tuple:
+        '''Primary sprite color for this enemy type.'''
         return {'bee': C.BEE_COLOR, 'galaga': C.GALAGA_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
 
     def slot_world(self, wobble_x: float) -> tuple:
+        '''
+        World-space position of this enemy's formation slot.
+
+        Args:
+            wobble_x: current formation wobble offset in px.
+
+        Returns:
+            (x, y) world position.
+        '''
         return C.slot_to_world(self.slot_index, self.slot, wobble_x)
 
     def _begin_entry(self, wobble_x: float, params: dict) -> None:
+        '''
+        Start the curved entry flight toward the formation slot.
+
+        Args:
+            wobble_x: current formation wobble offset in px.
+            params: level parameters dict from config.level_params.
+        '''
         self.entry_started = True
         self.entry_duration = params['entry_path_time']
         side = self.spiral_side
@@ -115,6 +151,16 @@ class Enemy:
         self.p1 = (C.WIDTH / 2 + side * random.uniform(120, 320), random.uniform(60, 140))
 
     def update_entry(self, dt: float, wobble_x: float) -> bool:
+        '''
+        Advance the entry flight; snap into formation when close.
+
+        Args:
+            dt: frame delta in seconds.
+            wobble_x: current formation wobble offset in px.
+
+        Returns:
+            True once the enemy has joined the formation.
+        '''
         if not self.entry_started:
             self.x, self.y = self.p0 if self.p0 else (self.x, -60.0)
 
@@ -149,12 +195,29 @@ class EnemyBullet:
     __slots__ = ('x', 'y', 'vx', 'vy', 'alive', 'homing')
 
     def __init__(self, x: float, y: float, vx: float, vy: float, homing: bool = False):
+        '''
+        Create an enemy bullet.
+
+        Args:
+            x: spawn x in world px.
+            y: spawn y in world px.
+            vx: horizontal velocity in px/s.
+            vy: vertical velocity in px/s.
+            homing: steer toward the nearest player each frame.
+        '''
         self.x, self.y = x, y
         self.vx, self.vy = vx, vy
         self.alive = True
         self.homing = homing
 
     def update(self, dt: float, players: list = None) -> None:
+        '''
+        Move the bullet, optionally homing toward the nearest player.
+
+        Args:
+            dt: frame delta in seconds.
+            players: list of Player objects to home toward.
+        '''
         if self.homing and players:
             alive = [p for p in players if p.alive]
 
@@ -174,16 +237,36 @@ class EnemyBullet:
             self.alive = False
 
     def rect(self) -> pygame.Rect:
+        '''Current screen-space hitbox rect.'''
         return pygame.Rect(int(self.x - 3), int(self.y - C.ENEMY_BULLET_H / 2),
                            6, C.ENEMY_BULLET_H)
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
+        '''
+        Draw the bullet.
+
+        Args:
+            surf: surface to draw on.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
         x, y = int(self.x + ox), int(self.y + oy)
         pygame.draw.circle(surf, C.ORANGE, (x, y), 4)
         pygame.draw.rect(surf, C.YELLOW, (x - 1, y - 6, 3, 12))
 
 
 def _rescale(vx: float, vy: float, sp: float) -> tuple:
+    '''
+    Scale a velocity vector to the given speed.
+
+    Args:
+        vx: current x velocity in px/s.
+        vy: current y velocity in px/s.
+        sp: target speed in px/s.
+
+    Returns:
+        (vx, vy) rescaled velocity.
+    '''
     m = math.hypot(vx, vy) or 1.0
 
     return vx / m * sp, vy / m * sp
@@ -191,6 +274,7 @@ def _rescale(vx: float, vy: float, sp: float) -> tuple:
 
 class Fleet:
     def __init__(self):
+        '''Create an empty fleet (no enemies or bullets).'''
         self.enemies = []
         self.bullets = []
         self.wobble_t = 0.0
@@ -200,6 +284,12 @@ class Fleet:
         self.level = 1
 
     def setup(self, level: int) -> None:
+        '''
+        Populate the fleet for a level.
+
+        Args:
+            level: 1-based level number.
+        '''
         self.level = level
         self.params = C.level_params(level)
         self.wobble_t = 0.0
@@ -216,6 +306,14 @@ class Fleet:
             self.enemies.append(e)
 
     def _assign_entry(self, e: Enemy, i: int, level: int) -> None:
+        '''
+        Schedule an enemy's entry flight with a staggered delay.
+
+        Args:
+            e: the Enemy to schedule.
+            i: index of the enemy in the formation.
+            level: 1-based level number (tightens the stagger).
+        '''
         delay = self.params['entry_delay']
 
         if e.etype == 'boss':
@@ -235,22 +333,35 @@ class Fleet:
 
     @property
     def wobble_x(self) -> float:
+        '''Current horizontal formation wobble offset in px.'''
         return (math.sin(self.wobble_t * self.params['formation_wobble_speed'])
                 * self.params['formation_wobble_amp'])
 
     def alive_enemies(self) -> list:
+        '''Enemies that are not dead or off-screen.'''
         return [e for e in self.enemies if e.state != DEAD]
 
     def all_in_formation(self) -> bool:
+        '''True when every surviving enemy is in its formation slot.'''
         # DEAD enemies count as 'settled' — a kill during the entry fly-in
         # must not stall the entry->active transition (it used to lock the
         # level in 'entry' forever, so no further waves ever started).
         return all(e.state in (FORMATION, DIVE, REENTER, DEAD) for e in self.enemies)
 
     def diving_count(self) -> int:
+        '''Number of enemies currently dive-bombing.'''
         return sum(1 for e in self.enemies if e.state == DIVE)
 
     def update(self, dt: float, players: list, effects: 'Effects', sound: 'SoundBank') -> None:
+        '''
+        Advance the fleet: entries, wobble, dive waves, and bullets.
+
+        Args:
+            dt: frame delta in seconds.
+            players: list of Player objects.
+            effects: Effects instance for explosions.
+            sound: SoundBank instance.
+        '''
         self.wobble_t += dt
         self.fleet_time += dt
         wx = self.wobble_x
@@ -288,6 +399,13 @@ class Fleet:
         self.bullets = [b for b in self.bullets if b.alive]
 
     def _start_dive_wave(self, players: list, sound: 'SoundBank') -> None:
+        '''
+        Pick up to the dive cap of formation enemies to dive-bomb.
+
+        Args:
+            players: list of Player objects to target.
+            sound: SoundBank instance for dive sounds.
+        '''
         if self.diving_count() >= self.params['max_divers']:
             return
 
@@ -323,6 +441,16 @@ class Fleet:
 
     def _update_dive(self, e: Enemy, dt: float, players: list,
                      effects: 'Effects', sound: 'SoundBank') -> None:
+        '''
+        Advance a dive-bomber; boss splits and may fire while diving.
+
+        Args:
+            e: the diving Enemy.
+            dt: frame delta in seconds.
+            players: list of Player objects.
+            effects: Effects instance for explosions.
+            sound: SoundBank instance.
+        '''
 
         if e.dive_delay > 0:
             e.dive_delay -= dt
@@ -375,6 +503,14 @@ class Fleet:
             e.p1 = (C.WIDTH / 2 + side * 200, 90)
 
     def _update_reenter(self, e: Enemy, dt: float, wx: float) -> None:
+        '''
+        Advance the arc back toward the formation slot.
+
+        Args:
+            e: the re-entering Enemy.
+            dt: frame delta in seconds.
+            wx: current formation wobble offset in px.
+        '''
         e.entry_t += dt / (self.params['entry_path_time'] * 0.8)
         t = min(1.0, e.entry_t)
         u = 1 - t
@@ -388,6 +524,14 @@ class Fleet:
             e.x, e.y = tx, ty
 
     def _fire_aimed(self, e: Enemy, players: list, sound: 'SoundBank') -> None:
+        '''
+        Maybe fire from a formation enemy, aimed at the nearest player.
+
+        Args:
+            e: the firing Enemy.
+            players: list of Player objects to aim at.
+            sound: SoundBank instance for the shot sound.
+        '''
         alive = [p for p in players if p.alive]
 
         if not alive:
@@ -447,6 +591,14 @@ class Fleet:
         return e.score(diving)
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
+        '''
+        Draw all surviving enemies and enemy bullets.
+
+        Args:
+            surf: surface to draw on.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
         for e in self.enemies:
             if e.state == DEAD:
                 continue
@@ -460,6 +612,15 @@ class Fleet:
             b.draw(surf, ox, oy)
 
     def _draw_enemy(self, surf: pygame.Surface, e: Enemy, ox: float, oy: float) -> None:
+        '''
+        Draw one enemy using the sprite for its type.
+
+        Args:
+            surf: surface to draw on.
+            e: the Enemy to draw.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
         x, y = int(e.x + ox), int(e.y + oy)
 
         if e.flash > 0:
@@ -478,6 +639,16 @@ class Fleet:
             self._draw_boss(surf, x, y, col, flap, e.split)
 
     def _draw_bee(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
+        '''
+        Draw a bee sprite (wings flap with the flap phase).
+
+        Args:
+            surf: surface to draw on.
+            x: screen-space center x in px.
+            y: screen-space center y in px.
+            col: body color.
+            flap: wing flap phase in [0, 1].
+        '''
         # wings
         wing = int(6 + 5 * flap)
         pygame.draw.ellipse(surf, (200, 220, 255), (x - 12, y - 6 - wing, 9, wing + 6))
@@ -495,6 +666,16 @@ class Fleet:
         pygame.draw.circle(surf, C.WHITE, (x + 3, y - 6), 1)
 
     def _draw_galaga(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
+        '''
+        Draw a galaga sprite (wings flap with the flap phase).
+
+        Args:
+            surf: surface to draw on.
+            x: screen-space center x in px.
+            y: screen-space center y in px.
+            col: body color.
+            flap: wing flap phase in [0, 1].
+        '''
         # side fins (flap)
         fin = int(4 + 6 * flap)
         pygame.draw.polygon(surf, C.BLUE, [(x - 8, y), (x - 8 - fin, y - 6), (x - 8 - fin, y + 4)])
@@ -515,6 +696,17 @@ class Fleet:
 
     def _draw_boss(self, surf: pygame.Surface, x: int, y: int, col: tuple,
                    flap: float, split: bool) -> None:
+        '''
+        Draw a boss sprite (wings flap; split state shown in red).
+
+        Args:
+            surf: surface to draw on.
+            x: screen-space center x in px.
+            y: screen-space center y in px.
+            col: body color.
+            flap: wing flap phase in [0, 1].
+            split: boss has split and is flashing red.
+        '''
 
         gap = 4 if split else 0
 

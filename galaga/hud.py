@@ -7,6 +7,7 @@ from . import config as C
 
 class HUD:
     def __init__(self):
+        '''Create the fonts used by the HUD.'''
         self.font_xs = pygame.font.Font(None, 18)
         self.font_s = pygame.font.Font(None, 22)
         self.font_m = pygame.font.Font(None, 30)
@@ -15,6 +16,15 @@ class HUD:
 
     def draw_top(self, surf: pygame.Surface, players: list,
                  level: int, highscores: dict) -> None:
+        '''
+        Draw the in-game top bar (lives, score, level, wave stats).
+
+        Args:
+            surf: surface to draw on.
+            players: list of Player objects.
+            level: current 1-based level number.
+            highscores: high scores dict keyed by player index.
+        '''
         # 1P block (left)
         self._text(surf, '1UP', C.YELLOW, 16, 10, self.font_s)
         s1 = self._text(surf, f'{players[0].score:07d}', C.WHITE, 16, 28, self.font_m)
@@ -64,6 +74,15 @@ class HUD:
                    align='right', anchor_x=C.WIDTH - 16)
 
     def _ship_icon(self, surf: pygame.Surface, x: int, y: int, color: tuple) -> None:
+        '''
+        Draw a small player-ship icon.
+
+        Args:
+            surf: surface to draw on.
+            x: icon center x in px.
+            y: icon center y in px.
+            color: hull color.
+        '''
         pts = [(x, y + 6), (x - 6, y - 5), (x - 2, y - 5), (x, y - 2),
                (x + 2, y - 5), (x + 6, y - 5), (x, y + 6)]
 
@@ -71,6 +90,14 @@ class HUD:
 
     def draw_menu(self, surf: pygame.Surface, highscores: dict,
                   selected_mode: int) -> None:
+        '''
+        Draw the main menu with the selected mode highlighted.
+
+        Args:
+            surf: surface to draw on.
+            highscores: high scores dict keyed by player index.
+            selected_mode: index of the highlighted menu mode.
+        '''
         # title with layered color
         title = self.font_xl.render('GALAGA', True, C.RED)
         t2 = self.font_xl.render('GALAGA', True, C.ORANGE)
@@ -107,12 +134,20 @@ class HUD:
                                 True, C.LIGHT_GRAY)
 
         surf.blit(f1, f1.get_rect(center=(C.WIDTH // 2, 540)))
-        f2 = self.font_s.render('P1: A/D MOVE + SPACE FIRE        P2: ARROWS MOVE + L FIRE',
+        f2 = self.font_s.render('P1: ARROWS MOVE + UP FIRE        P2: A/D MOVE + W FIRE',
                                 True, C.LIGHT_GRAY)
 
         surf.blit(f2, f2.get_rect(center=(C.WIDTH // 2, 566)))
 
     def draw_intro(self, surf: pygame.Surface, level: int, params: dict) -> None:
+        '''
+        Draw the wave-intro banner with the level's parameters.
+
+        Args:
+            surf: surface to draw on.
+            level: 1-based level number.
+            params: level parameters dict from config.level_params.
+        '''
         banner = self.font_xl.render(f'WAVE {level}', True, C.YELLOW)
         surf.blit(banner, banner.get_rect(center=(C.WIDTH // 2, 250)))
         ready = self.font_l.render('GET READY', True, C.WHITE)
@@ -127,6 +162,12 @@ class HUD:
         surf.blit(diff, diff.get_rect(center=(C.WIDTH // 2, 395)))
 
     def draw_pause(self, surf: pygame.Surface) -> None:
+        '''
+        Draw the pause overlay.
+
+        Args:
+            surf: surface to draw on.
+        '''
         veil = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
         veil.fill((0, 0, 0, 150))
         surf.blit(veil, (0, 0))
@@ -138,6 +179,14 @@ class HUD:
 
     def draw_game_over(self, surf: pygame.Surface, players: list,
                        highscore_flag: bool) -> None:
+        '''
+        Draw the game-over screen with final scores.
+
+        Args:
+            surf: surface to draw on.
+            players: list of Player objects.
+            highscore_flag: True if a new high score was set.
+        '''
 
         veil = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
         veil.fill((0, 0, 0, 170))
@@ -161,6 +210,22 @@ class HUD:
     def _text(self, surf: pygame.Surface, text: str, color: tuple, x: int, y: int,
               font: pygame.font.Font, align: str = 'left',
               anchor_x: int = None) -> pygame.Rect:
+        '''
+        Blit a centered text string and return its rect.
+
+        Args:
+            surf: surface to draw on.
+            text: string to render.
+            color: text color.
+            x: anchor x in px.
+            y: anchor y in px.
+            font: font to render with.
+            align: vertical alignment ('top', 'center', or 'bottom').
+            anchor_x: anchor x from 0.0 (left) to 1.0 (right).
+
+        Returns:
+            Rect of the rendered text.
+        '''
 
         img = font.render(text, True, color)
         r = img.get_rect()

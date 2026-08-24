@@ -57,10 +57,30 @@ def _lowpass(x: 'np.ndarray', alpha: float = 0.15) -> 'np.ndarray':
 
 
 def _noise(n: int) -> 'np.ndarray':
+    '''
+    Generate white noise samples.
+
+    Args:
+        n: number of samples.
+
+    Returns:
+        Float32 array of n samples in [-1, 1].
+    '''
     return np.random.uniform(-1.0, 1.0, n)
 
 
 def _sine(freq: float, n: int, rate: float = None) -> 'np.ndarray':
+    '''
+    Generate a sine wave.
+
+    Args:
+        freq: frequency in Hz.
+        n: number of samples.
+        rate: sample rate in Hz.
+
+    Returns:
+        Float32 array of n samples in [-1, 1].
+    '''
     t = np.arange(n, dtype=np.float64) / SAMPLE_RATE
 
     return np.sin(2.0 * math.pi * freq * t)
@@ -87,6 +107,7 @@ def _sweep(freq_start: float, freq_end: float, n: int, rate: float = None,
 class SoundBank:
     '''Holds all synthesized sounds and safe play() methods.'''
     def __init__(self) -> None:
+        '''Build all game sounds (no-ops if audio is unavailable).'''
         self.enabled = False
         self.muted = False
         self.sounds = {}
@@ -94,6 +115,7 @@ class SoundBank:
         self._build()
 
     def _build(self) -> None:
+        '''Synthesize every sound into the bank.'''
         if not _HAVE_NUMPY:
             return
 
@@ -193,6 +215,13 @@ class SoundBank:
         self.enabled = True
 
     def play(self, name: str, volume: float = 1.0) -> None:
+        '''
+        Play a named sound at the given volume.
+
+        Args:
+            name: key of the sound in the bank.
+            volume: playback volume in [0, 1].
+        '''
         if not self.enabled or self.muted:
             return
 

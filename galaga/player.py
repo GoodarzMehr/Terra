@@ -9,12 +9,28 @@ class PlayerBullet:
     __slots__ = ('x', 'y', 'vx', 'vy', 'owner', 'alive')
 
     def __init__(self, x: float, y: float, vx: float, vy: float, owner: 'Player'):
+        '''
+        Create a player bullet.
+
+        Args:
+            x: spawn x in world px.
+            y: spawn y in world px.
+            vx: x velocity in px/s.
+            vy: y velocity in px/s.
+            owner: index of the firing player.
+        '''
         self.x, self.y = x, y
         self.vx, self.vy = vx, vy
         self.owner = owner
         self.alive = True
 
     def update(self, dt: float) -> None:
+        '''
+        Move the bullet.
+
+        Args:
+            dt: frame delta in seconds.
+        '''
         self.x += self.vx * dt
         self.y += self.vy * dt
 
@@ -22,10 +38,19 @@ class PlayerBullet:
             self.alive = False
 
     def rect(self) -> pygame.Rect:
+        '''Current screen-space hitbox rect.'''
         return pygame.Rect(int(self.x - C.BULLET_W / 2), int(self.y - C.BULLET_H / 2),
                            C.BULLET_W, C.BULLET_H)
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
+        '''
+        Draw the bullet.
+
+        Args:
+            surf: surface to draw on.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
         x, y = int(self.x + ox), int(self.y + oy)
 
         # glow
@@ -38,6 +63,12 @@ class PlayerBullet:
 
 class Player:
     def __init__(self, index: int):
+        '''
+        Create a player.
+
+        Args:
+            index: player index (0 for 1P/2P, 1 for 2P only).
+        '''
         self.index = index  # 0 = P1 (left), 1 = P2 (right)
         self.x = C.WIDTH * (0.3 if index == 0 else 0.7)
         self.y = C.PLAYER_Y
@@ -61,9 +92,11 @@ class Player:
 
     @property
     def multiplier_value(self) -> int:
+        '''Current streak multiplier (1-6).'''
         return min(C.STREAK_MAX, 1 + self.streak // 2)
 
     def reset(self) -> None:
+        '''Reset position, lives, and streak for a new game.'''
         self.x = C.WIDTH * (0.3 if self.index == 0 else 0.7)
         self.lives = C.PLAYER_LIVES
         self.score = 0
@@ -107,6 +140,15 @@ class Player:
         return True
 
     def update(self, dt: float, move_dir: int, firing: bool, sound: 'SoundBank') -> None:
+        '''
+        Move, fire, and tick shield/respawn timers.
+
+        Args:
+            dt: frame delta in seconds.
+            move_dir: horizontal direction (-1/0/1).
+            firing: whether the fire key is held.
+            sound: SoundBank instance.
+        '''
         # timers
         if self.fire_cooldown > 0:
             self.fire_cooldown -= dt
@@ -150,6 +192,7 @@ class Player:
         self.bullets = [b for b in self.bullets if b.alive]
 
     def _respawn(self) -> None:
+        '''Place the ship at its start position after a life is lost.'''
         self.x = C.WIDTH * (0.3 if self.index == 0 else 0.7)
         self.alive = True
         self.spawn_anim = 0.0
@@ -157,6 +200,12 @@ class Player:
         self.bullets.clear()
 
     def _fire(self, sound: 'SoundBank') -> None:
+        '''
+        Fire bullets (single or triple depending on powerups).
+
+        Args:
+            sound: SoundBank instance for the shot sound.
+        '''
         rapid = self.rapid_t > 0
         cooldown = C.PLAYER_RAPID_COOLDOWN if rapid else C.PLAYER_FIRE_COOLDOWN
         active = [b for b in self.bullets if b.alive]
@@ -176,6 +225,14 @@ class Player:
         self.fire_cooldown = cooldown
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
+        '''
+        Draw the ship and shield bubble (if active).
+
+        Args:
+            surf: surface to draw on.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
         if not self.alive:
             return
 

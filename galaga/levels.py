@@ -10,17 +10,20 @@ class LevelManager:
     'active' (combat), 'clear' (banner, then next level starts).
     '''
     def __init__(self):
+        '''Start at level 1 with its parameters loaded.'''
         self.level = 1
         self.phase = 'intro'
         self.timer = 0.0
 
     def start(self) -> None:
+        '''Advance to the next level and load its parameters.'''
         self.level = 1
         self.phase = 'intro'
         self.timer = 2.4
 
     @property
     def params(self) -> dict:
+        '''Parameters dict for the current level.'''
         return C.level_params(self.level)
 
     def update(self, dt: float, fleet: 'Fleet', sound: 'SoundBank') -> str:

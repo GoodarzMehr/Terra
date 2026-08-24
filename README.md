@@ -66,9 +66,9 @@ python main.py --selftest   # prints SELFTEST OK on success
 
 | Action | Player 1 | Player 2 |
 | :--- | :---: | :---: |
-| Move left | `A` | `←` |
-| Move right | `D` | `→` |
-| Fire | `Space` | `L` |
+| Move left | `←` | `A` |
+| Move right | `→` | `D` |
+| Fire | `↑` | `W` |
 | Pause (either) | `P` | `P` |
 | Menu / confirm | `Enter` | `Enter` |
 | Quit | `Esc` | `Esc` |

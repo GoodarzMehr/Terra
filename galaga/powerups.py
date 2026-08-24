@@ -20,6 +20,14 @@ class Powerup:
     __slots__ = ('kind', 'x', 'y', 't', 'alive', 'color', 'label')
 
     def __init__(self, kind: str, x: float, y: float):
+        '''
+        Create a falling powerup.
+
+        Args:
+            kind: powerup kind ('triple', 'rapid', 'shield', or 'life').
+            x: spawn x in world px.
+            y: spawn y in world px.
+        '''
         self.kind = kind
         self.x = x
         self.y = y
@@ -33,6 +41,12 @@ class Powerup:
                 break
 
     def update(self, dt: float) -> None:
+        '''
+        Move the powerup downward.
+
+        Args:
+            dt: frame delta in seconds.
+        '''
         self.t += dt
         self.y += C.POWERUP_FALL_SPEED * dt
         self.x += math.sin(self.t * 2.0) * 30 * dt  # gentle sway
@@ -41,12 +55,22 @@ class Powerup:
             self.alive = False
 
     def rect(self) -> pygame.Rect:
+        '''Current screen-space hitbox rect.'''
         s = C.POWERUP_W
 
         return pygame.Rect(int(self.x - s / 2), int(self.y - s / 2), s, s)
 
     def draw(self, surf: pygame.Surface, font: pygame.font.Font,
              ox: float, oy: float) -> None:
+        '''
+        Draw the powerup letter and label.
+
+        Args:
+            surf: surface to draw on.
+            font: font to render the label with.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
 
         pulse = 0.6 + 0.4 * math.sin(self.t * 6.0)
         x, y = int(self.x + ox), int(self.y + oy)
@@ -67,9 +91,11 @@ class Powerup:
 
 class PowerupManager:
     def __init__(self):
+        '''Create an empty powerup list.'''
         self.pickups = []
 
     def reset(self) -> None:
+        '''Clear all active powerups (new game).'''
         self.pickups.clear()
 
     def maybe_drop(self, x: float, y: float, etype: str) -> None:
@@ -83,6 +109,7 @@ class PowerupManager:
         self.pickups.append(Powerup(kind, x, y))
 
     def _roll_kind(self) -> str:
+        '''Roll a random powerup kind using the config weights.'''
         total = sum(w for _k, w, _c, _l in TABLE)
         r = random.uniform(0, total)
         acc = 0.0
@@ -97,6 +124,15 @@ class PowerupManager:
 
     def update(self, dt: float, players: list, sound: 'SoundBank',
                effects: 'Effects') -> None:
+        '''
+        Advance falling powerups and handle player pickups.
+
+        Args:
+            dt: frame delta in seconds.
+            players: list of Player objects.
+            sound: SoundBank instance.
+            effects: Effects instance for pickup feedback.
+        '''
 
         for p in self.pickups:
             p.update(dt)
@@ -125,6 +161,15 @@ class PowerupManager:
 
     def _apply(self, kind: str, player: 'Player', sound: 'SoundBank',
                effects: 'Effects') -> None:
+        '''
+        Apply a picked-up powerup to the collecting player.
+
+        Args:
+            kind: powerup kind.
+            player: the Player that collected it.
+            sound: SoundBank instance.
+            effects: Effects instance for pickup feedback.
+        '''
 
         if kind == 'triple':
             player.triple_t = C.TRIPLE_DURATION
@@ -145,6 +190,15 @@ class PowerupManager:
 
     def draw(self, surf: pygame.Surface, font: pygame.font.Font,
              ox: float, oy: float) -> None:
+        '''
+        Draw all active powerups.
+
+        Args:
+            surf: surface to draw on.
+            font: font to render the labels with.
+            ox: screen-space camera offset x in px.
+            oy: screen-space camera offset y in px.
+        '''
 
         for p in self.pickups:
             p.draw(surf, font, ox, oy)

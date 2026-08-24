@@ -6,8 +6,8 @@ Fullscr:  python main.py --fullscreen  (fills the monitor, fits any screen)
 Selftest: python main.py --selftest   (headless, prints SELFTEST OK)
 
 Controls
-  P1: A/D move, SPACE fire
-  P2: LEFT/RIGHT move, L fire
+  P1: LEFT/RIGHT move, UP fire
+  P2: A/D move, W fire
   P pause, Enter confirm, Esc quit
 
 '''
@@ -38,6 +38,7 @@ GAME_OVER = 'game_over'
 
 class Game:
     def __init__(self, selftest: bool = False, fullscreen: bool = False):
+        '''Initialize the game window, subsystems, and main menu state.'''
         self.selftest = selftest
 
         if selftest:
@@ -101,6 +102,12 @@ class Game:
         self._last_streak_sound = {}
 
     def _load_highscores(self) -> dict:
+        '''
+        Load high scores from the save file (empty dict if missing).
+
+        Returns:
+            High scores dict keyed by player index.
+        '''
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), C.HIGHSCORE_FILE)
 
         try:
@@ -112,6 +119,7 @@ class Game:
             return {'1p': 0, '2p': 0}
 
     def _save_highscores(self) -> None:
+        '''Persist the current high scores to the save file.'''
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), C.HIGHSCORE_FILE)
 
         try:
@@ -121,6 +129,7 @@ class Game:
             pass
 
     def start_game(self) -> None:
+        '''Start a new game for the selected number of players.'''
         self.players = [Player(0)] + ([Player(1)] if self.mode == 2 else [])
         self.fleet = Fleet()
         self.powerups.reset()
@@ -132,13 +141,16 @@ class Game:
         self.state_time = 0.0
 
     def to_menu(self) -> None:
+        '''Return to the main menu, resetting per-game state.'''
         self.state = MENU
         self.state_time = 0.0
 
     def quit(self) -> None:
+        '''Set the running flag to False to end the main loop.'''
         self.running = False
 
     def handle_events(self) -> None:
+        '''Process window close, pause, quit, and menu navigation keys.'''
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 self.quit()
@@ -167,17 +179,31 @@ class Game:
                     pass  # selftest drives itself
 
     def _input_dirs(self) -> tuple:
+        '''
+        Read the current keyboard state for both players.
+
+        Returns:
+            (d1, f1, d2, f2): per-player horizontal direction (-1/0/1)
+            and firing flag.
+        '''
         keys = pygame.key.get_pressed()
 
-        d1 = (1 if keys[pygame.K_d] else 0) - (1 if keys[pygame.K_a] else 0)
-        f1 = keys[pygame.K_SPACE]
+        d1 = (1 if keys[pygame.K_RIGHT] else 0) - (1 if keys[pygame.K_LEFT] else 0)
+        f1 = keys[pygame.K_UP]
 
-        d2 = (1 if keys[pygame.K_RIGHT] else 0) - (1 if keys[pygame.K_LEFT] else 0)
-        f2 = keys[pygame.K_l]
+        d2 = (1 if keys[pygame.K_d] else 0) - (1 if keys[pygame.K_a] else 0)
+        f2 = keys[pygame.K_w]
 
         return d1, f1, d2, f2
 
     def _collisions(self, dt: float) -> None:
+        '''
+        Resolve bullets-vs-enemies, enemies-vs-players, and
+        powerup pickups.
+
+        Args:
+            dt: frame delta in seconds.
+        '''
         # player bullets vs enemies
         for p in self.players:
             for b in p.bullets:
@@ -256,6 +282,13 @@ class Game:
                         self.powerups.maybe_drop(e.x, e.y, e.etype)
 
     def update(self, dt: float) -> None:
+        '''
+        Advance one frame of gameplay (players, fleet, powerups,
+        effects, and wave progression).
+
+        Args:
+            dt: frame delta in seconds.
+        '''
         self.state_time += dt
         self.starfield.update(dt, 1.6 if self.state == PLAYING else 1.0)
         self.effects.update(dt)
@@ -310,6 +343,7 @@ class Game:
             self._finish_game()
 
     def _finish_game(self) -> None:
+        '''Enter the game-over state and persist the high scores.'''
         key = f'{self.mode}p'
         total = sum(p.score for p in self.players)
 
@@ -357,6 +391,7 @@ class Game:
             self.quit()
 
     def draw(self) -> None:
+        '''Render the current frame for the active game state.'''
         # Draw the whole frame into the logical-resolution world surface,
         # then upscale it 2x to the display window.
         surf = self.world
@@ -401,6 +436,7 @@ class Game:
         pygame.display.flip()
 
     def run(self) -> None:
+        '''Run the main loop at 60 FPS until the game is quit.'''
         self.running = True
 
         while self.running:
@@ -417,6 +453,7 @@ class Game:
 
 
 def main() -> None:
+    '''Parse CLI flags and launch the game.'''
     selftest = '--selftest' in sys.argv
     fullscreen = '--fullscreen' in sys.argv
     game = Game(selftest=selftest, fullscreen=fullscreen)
