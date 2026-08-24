@@ -134,7 +134,7 @@ class HUD:
                                 True, C.LIGHT_GRAY)
 
         surf.blit(f1, f1.get_rect(center=(C.WIDTH // 2, 540)))
-        f2 = self.font_s.render('P1: ARROWS MOVE + UP FIRE        P2: A/D MOVE + W FIRE',
+        f2 = self.font_s.render('P1: ARROWS MOVE (AUTO-FIRE)        P2: A/D MOVE (AUTO-FIRE)',
                                 True, C.LIGHT_GRAY)
 
         surf.blit(f2, f2.get_rect(center=(C.WIDTH // 2, 566)))

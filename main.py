@@ -6,8 +6,8 @@ Fullscr:  python main.py --fullscreen  (fills the monitor, fits any screen)
 Selftest: python main.py --selftest   (headless, prints SELFTEST OK)
 
 Controls
-  P1: LEFT/RIGHT move, UP fire
-  P2: A/D move, W fire
+  P1: LEFT/RIGHT move (auto-fire)
+  P2: A/D move (auto-fire)
   P pause, Enter confirm, Esc quit
 
 '''
@@ -183,18 +183,14 @@ class Game:
         Read the current keyboard state for both players.
 
         Returns:
-            (d1, f1, d2, f2): per-player horizontal direction (-1/0/1)
-            and firing flag.
+            (d1, d2): per-player horizontal direction (-1/0/1).
         '''
         keys = pygame.key.get_pressed()
 
         d1 = (1 if keys[pygame.K_RIGHT] else 0) - (1 if keys[pygame.K_LEFT] else 0)
-        f1 = keys[pygame.K_UP]
-
         d2 = (1 if keys[pygame.K_d] else 0) - (1 if keys[pygame.K_a] else 0)
-        f2 = keys[pygame.K_w]
 
-        return d1, f1, d2, f2
+        return d1, d2
 
     def _collisions(self, dt: float) -> None:
         '''
@@ -328,12 +324,11 @@ class Game:
         if phase == 'active':
             self.fleet.formation_fire(self.players, self.sound, dt)
 
-        d1, f1, d2, f2 = self._input_dirs()
+        d1, d2 = self._input_dirs()
 
         for i, p in enumerate(self.players):
             d = d1 if i == 0 else d2
-            f = f1 if i == 0 else f2
-            p.update(dt, d, f, self.sound)
+            p.update(dt, d, self.sound)
 
         self.powerups.update(dt, self.players, self.sound, self.effects)
         self._collisions(dt)

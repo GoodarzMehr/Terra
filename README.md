@@ -68,7 +68,7 @@ python main.py --selftest   # prints SELFTEST OK on success
 | :--- | :---: | :---: |
 | Move left | `←` | `A` |
 | Move right | `→` | `D` |
-| Fire | `↑` | `W` |
+| Fire | auto | auto |
 | Pause (either) | `P` | `P` |
 | Menu / confirm | `Enter` | `Enter` |
 | Quit | `Esc` | `Esc` |

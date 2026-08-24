@@ -139,14 +139,13 @@ class Player:
 
         return True
 
-    def update(self, dt: float, move_dir: int, firing: bool, sound: 'SoundBank') -> None:
+    def update(self, dt: float, move_dir: int, sound: 'SoundBank') -> None:
         '''
-        Move, fire, and tick shield/respawn timers.
+        Move, auto-fire, and tick shield/respawn timers.
 
         Args:
             dt: frame delta in seconds.
             move_dir: horizontal direction (-1/0/1).
-            firing: whether the fire key is held.
             sound: SoundBank instance.
         '''
         # timers
@@ -181,8 +180,8 @@ class Player:
         self.x += move_dir * C.PLAYER_SPEED * dt
         self.x = C.clamp(self.x, C.PLAYER_W / 2 + 8, C.WIDTH - C.PLAYER_W / 2 - 8)
 
-        # firing
-        if firing and self.fire_cooldown <= 0:
+        # auto-firing
+        if self.fire_cooldown <= 0:
             self._fire(sound)
 
         # bullets
