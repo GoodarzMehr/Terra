@@ -21,12 +21,12 @@ single folder.
 
 | | |
 | :-- | :-- |
-| 🐝 **Classic enemies** | Red **Bee** (fast & erratic), blue-green **Galaga** (medium), and the big two-part **Boss** (400 pts, takes 2 hits — the first splits it in half). |
-| 🛰️ **Choreographed entry** | The 40-ship formation flies in every level, with Bosses spiraling into their slots. |
-| 💥 **Dive-bomb waves** | Enemies break formation in V-formations and single runs, curving toward your position and firing as they dive. |
-| 📈 **Progressive difficulty** | Each level dives faster, fires more, and sends more simultaneous divers. The curve keeps climbing past level 30 — dives are faster, more divers run at once, and enemy bullets get quicker — with only sanity bounds (dodgeable speeds, minimum gaps) left in place. |
+| 🐝 **Classic enemies** | Red **Bee** (fast & erratic), blue-green **Galaga** (medium), and the big two-part **Boss** (400 pts, takes 2 hits — the first splits it in half). From level 25, **elite** Bosses (tinted yellow) take 3 hits, and from level 50 they take 4. |
+| 🛰️ **Choreographed entry** | The formation flies in every level, with Bosses spiraling into their slots. It starts as the classic 40-ship layout and scales up to 76 ships as the levels climb (extra Galaga rows, a 3rd Bee row, and a 5th/6th Boss). |
+| 💥 **Dive-bomb waves** | Enemies break formation in V-formations and single runs, curving toward your position and firing as they dive. When your ship is destroyed, divers scatter back to formation instead of hunting your respawn. |
+| 📈 **Progressive difficulty** | Each level dives faster, fires more, and sends more simultaneous divers. Bosses get meaner too: their aimed fire can fan out into a 3-way spread, and their homing-bullet chance ramps from 15% to 90% over the first ~95 levels. The ramp is deliberately slow: every parameter keeps escalating for roughly levels 60–100 before it saturates at a sanity bound (dodgeable speeds, minimum gaps), so the game stays in a long "endless escalation" arc. |
 | 🔥 **Streak scoring** | Consecutive kills without getting hit double your points (×1 → ×6, the classic "streak" rule). Getting hit resets it to ×1. |
-| 🎁 **Power-ups** | Enemies drop **Triple Shot**, **Rapid Fire**, **Shield**, and **Extra Life**. Bosses always drop one. |
+| 🎁 **Power-ups** | Enemies drop **Triple Shot**, **Rapid Fire**, **Shield**, **Bomb**, and **Extra Life**. Bosses always drop one. |
 | 👥 **Two-player co-op** | P1 and P2 each have their own ship, lives, and score. |
 | 🔊 **Procedural sound** | Lasers, explosions, dive whoosh, and the level-clear jingle are all generated in code (silently degrades if numpy is unavailable). |
 | 🏅 **High scores** | Persisted to `highscores.json`. |
@@ -69,6 +69,7 @@ python main.py --selftest   # prints SELFTEST OK on success
 | Move left | `←` | `A` |
 | Move right | `→` | `D` |
 | Fire | auto | auto |
+| Bomb | `↑` | `W` |
 | Pause (either) | `P` | `P` |
 | Menu / confirm | `Enter` | `Enter` |
 | Quit | `Esc` | `Esc` |
@@ -91,6 +92,7 @@ enemy is worth double its base value.
 | ⚡ **Rapid Fire** | Faster fire rate for 8 s |
 | ✦ **Triple Shot** | 3-way spread for 10 s |
 | ◉ **Shield** | Absorbs one hit |
+| 💣 **Bomb** | Stacks; press `↑` (P1) or `W` (P2) to fire a 15-shot fan across a 60° forward cone |
 | ♥ **Extra Life** | +1 life |
 
 ## 🗂️ Project layout

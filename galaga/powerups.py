@@ -13,6 +13,7 @@ TABLE = [
     ('rapid', 30, C.MAGENTA, 'R'),
     ('shield', 25, C.CYAN, 'S'),
     ('life', 15, C.PINK, '+'),
+    ('bomb', 10, C.ORANGE, 'B'),
 ]
 
 
@@ -24,7 +25,7 @@ class Powerup:
         Create a falling powerup.
 
         Args:
-            kind: powerup kind ('triple', 'rapid', 'shield', or 'life').
+            kind: powerup kind ('triple', 'rapid', 'shield', 'life', 'bomb').
             x: spawn x in world px.
             y: spawn y in world px.
         '''
@@ -187,6 +188,10 @@ class PowerupManager:
             player.lives += 1
             effects.popup(player.x, player.y - 24, '1UP!', C.PINK)
             sound.play('extralife')
+        elif kind == 'bomb':
+            player.bombs += 1
+            effects.popup(player.x, player.y - 24, 'BOMB!', C.ORANGE)
+            sound.play('powerup')
 
     def draw(self, surf: pygame.Surface, font: pygame.font.Font,
              ox: float, oy: float) -> None:

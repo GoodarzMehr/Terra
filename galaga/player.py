@@ -1,5 +1,7 @@
 '''The player ship and its bullets.'''
 
+import math
+
 import pygame
 
 from . import config as C
@@ -72,6 +74,7 @@ class Player:
         self.index = index  # 0 = P1 (left), 1 = P2 (right)
         self.x = C.WIDTH * (0.3 if index == 0 else 0.7)
         self.y = C.PLAYER_Y
+        self.vx = 0.0  # px/s, tracked for enemy lead-aiming
 
         self.lives = C.PLAYER_LIVES
         self.score = 0
@@ -87,6 +90,7 @@ class Player:
         self.shield = False
         self.triple_t = 0.0
         self.rapid_t = 0.0
+        self.bombs = C.BOMB_START
 
         self.bullets = []
 
@@ -98,6 +102,7 @@ class Player:
     def reset(self) -> None:
         '''Reset position, lives, and streak for a new game.'''
         self.x = C.WIDTH * (0.3 if self.index == 0 else 0.7)
+        self.vx = 0.0
         self.lives = C.PLAYER_LIVES
         self.score = 0
         self.streak = 0
@@ -109,6 +114,7 @@ class Player:
         self.shield = False
         self.triple_t = 0.0
         self.rapid_t = 0.0
+        self.bombs = C.BOMB_START
         self.bullets.clear()
 
     def hit(self, effects: 'Effects', sound: 'SoundBank') -> bool:
@@ -177,7 +183,8 @@ class Player:
             return  # no control during fly-in
 
         # movement
-        self.x += move_dir * C.PLAYER_SPEED * dt
+        self.vx = move_dir * C.PLAYER_SPEED
+        self.x += self.vx * dt
         self.x = C.clamp(self.x, C.PLAYER_W / 2 + 8, C.WIDTH - C.PLAYER_W / 2 - 8)
 
         # auto-firing
@@ -222,6 +229,35 @@ class Player:
 
         sound.play('laser', 0.5)
         self.fire_cooldown = cooldown
+
+    def bomb_fan(self, sound: 'SoundBank', effects: 'Effects') -> bool:
+        '''
+        Fire the 15-shot bomb fan across a 60-degree forward cone.
+
+        Args:
+            sound: SoundBank instance for the blast sound.
+            effects: Effects instance for the blast flash and shake.
+
+        Returns:
+            True if a bomb was fired, False if none were available.
+        '''
+        if self.bombs <= 0:
+            return False
+
+        self.bombs -= 1
+
+        for i in range(C.BOMB_FAN_SHOTS):
+            t = i / (C.BOMB_FAN_SHOTS - 1)
+            ang = math.radians(-90.0) + (t - 0.5) * C.BOMB_FAN_ANGLE
+            vx = math.cos(ang) * C.BOMB_BULLET_SPEED
+            vy = math.sin(ang) * C.BOMB_BULLET_SPEED
+            self.bullets.append(PlayerBullet(self.x, self.y, vx, vy, self))
+
+        effects.flash(C.WHITE, 0.08)
+        effects.shake(C.SHAKE_MAGNITUDE, C.SHAKE_DURATION)
+        sound.play('bomb', 1.0)
+
+        return True
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
         '''
@@ -288,3 +324,6 @@ class Player:
 
         if self.shield:
             pygame.draw.circle(surf, C.CYAN, (px + 8, pip_y), 3)
+
+        if self.bombs > 0:
+            pygame.draw.circle(surf, C.ORANGE, (px + 16, pip_y), 3)

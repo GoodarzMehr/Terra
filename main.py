@@ -175,6 +175,11 @@ class Game:
                     if ev.key == pygame.K_RETURN:
                         self.sound.play('ui')
                         self.to_menu()
+                elif self.state == PLAYING and not self.selftest and not self.paused:
+                    if ev.key == pygame.K_UP:
+                        self.players[0].bomb_fan(self.sound, self.effects)
+                    elif ev.key == pygame.K_w and len(self.players) > 1:
+                        self.players[1].bomb_fan(self.sound, self.effects)
                 elif self.state == PLAYING and self.selftest:
                     pass  # selftest drives itself
 
@@ -250,8 +255,12 @@ class Game:
 
                 if br.colliderect(pr):
                     b.alive = False
-                    p.hit(self.effects, self.sound)
+                    died = p.hit(self.effects, self.sound)
                     self._last_streak_sound[p.index] = 0
+
+                    if died:
+                        self.fleet.scatter_divers()
+
                     break
 
         # enemy ships vs players (ramming)
@@ -269,13 +278,16 @@ class Game:
                                  C.PLAYER_W, C.PLAYER_H)
 
                 if er.colliderect(pr):
-                    p.hit(self.effects, self.sound)
+                    died = p.hit(self.effects, self.sound)
                     self._last_streak_sound[p.index] = 0
                     pts = self.fleet.hit_enemy(e, self.effects, self.sound)
 
                     if pts > 0:
                         p.score += pts * p.multiplier_value
                         self.powerups.maybe_drop(e.x, e.y, e.etype)
+
+                    if died:
+                        self.fleet.scatter_divers()
 
     def update(self, dt: float) -> None:
         '''

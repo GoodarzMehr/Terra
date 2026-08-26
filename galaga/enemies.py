@@ -31,11 +31,12 @@ class Enemy:
     __slots__ = (
         'etype', 'slot_index', 'slot', 'state', 'x', 'y', 'vx', 'vy',
         'anim_t', 'entry_t', 'entry_start', 'entry_duration', 'entry_started',
-        'dive_delay', 'dive_target_offset', 'dive_fire_t', 'hits', 'split',
-        'p0', 'p1', 'spiral_side', 'flash',
+        'dive_delay', 'dive_target_offset', 'dive_fire_t', 'dive_aim_t',
+        'dive_target', 'hits', 'split', 'elite', 'p0', 'p1', 'spiral_side', 'flash',
     )
 
-    def __init__(self, etype: str, slot_index: int, slot: tuple):
+    def __init__(self, etype: str, slot_index: int, slot: tuple,
+                 level: int = 1):
         '''
         Create an enemy of the given type in its formation slot.
 
@@ -43,6 +44,7 @@ class Enemy:
             etype: enemy type ('bee', 'galaga', or 'boss').
             slot_index: index of this enemy's formation slot.
             slot: (col, row) of the formation slot.
+            level: 1-based level (bosses gain extra hits over time).
         '''
         self.etype = etype
         self.slot_index = slot_index
@@ -64,8 +66,16 @@ class Enemy:
         self.dive_delay = 0.0
         self.dive_target_offset = 0.0
         self.dive_fire_t = random.uniform(0.2, 0.8)
+        self.dive_aim_t = 0.0
+        self.dive_target = None
 
-        self.hits = 2 if etype == 'boss' else 1
+        # elite bosses keep gaining hit points as the levels climb
+        if etype == 'boss':
+            self.hits = min(C.ELITE_BOSS_MAX_HITS,
+                            2 + max(1, level) // C.ELITE_BOSS_STEP)
+        else:
+            self.hits = 1
+        self.elite = etype == 'boss' and self.hits > 2
         self.split = False
 
         self.p0 = (0.0, 0.0)
@@ -218,11 +228,13 @@ class EnemyBullet:
             dt: frame delta in seconds.
             players: list of Player objects to home toward.
         '''
+        # only chase players that can actually be hit right now (a ship
+        # that just respawned blinks and is immune for a few seconds)
         if self.homing and players:
-            alive = [p for p in players if p.alive]
+            vulnerable = [p for p in players if p.alive and p.invuln <= 0]
 
-            if alive:
-                tgt = random.choice(alive)
+            if vulnerable:
+                tgt = random.choice(vulnerable)
                 dx, dy = tgt.x - self.x, tgt.y - self.y
                 d = math.hypot(dx, dy) or 1.0
                 sp = math.hypot(self.vx, self.vy)
@@ -298,14 +310,15 @@ class Fleet:
         self.dive_timer = 1.6
 
         self.enemies = []
-        slots = C.formation_slots()
+        slots = C.fleet_composition(level)
+        n_bosses = sum(1 for s in slots if s[0] == 'boss')
 
         for i, (etype, col, row) in enumerate(slots):
-            e = Enemy(etype, i, (etype, col, row))
-            self._assign_entry(e, i, level)
+            e = Enemy(etype, i, (etype, col, row), level)
+            self._assign_entry(e, i, level, n_bosses)
             self.enemies.append(e)
 
-    def _assign_entry(self, e: Enemy, i: int, level: int) -> None:
+    def _assign_entry(self, e: Enemy, i: int, level: int, n_bosses: int) -> None:
         '''
         Schedule an enemy's entry flight with a staggered delay.
 
@@ -313,15 +326,16 @@ class Fleet:
             e: the Enemy to schedule.
             i: index of the enemy in the formation.
             level: 1-based level number (tightens the stagger).
+            n_bosses: number of bosses in this fleet (entry stagger).
         '''
         delay = self.params['entry_delay']
 
         if e.etype == 'boss':
-            # bosses enter first, one after another
-            e.entry_start = 0.5 + (i % 4) * 0.28
+            # bosses enter first, one after another (count scales with level)
+            e.entry_start = 0.5 + (i % max(1, n_bosses)) * 0.28
         else:
             # group the non-boss enemies into waves of 6
-            non_boss_index = i - 4
+            non_boss_index = i - n_bosses
             group = non_boss_index // 6
             e.entry_start = 0.9 + group * delay + random.uniform(0.0, 0.12)
 
@@ -333,9 +347,12 @@ class Fleet:
 
     @property
     def wobble_x(self) -> float:
-        '''Current horizontal formation wobble offset in px.'''
-        return (math.sin(self.wobble_t * self.params['formation_wobble_speed'])
-                * self.params['formation_wobble_amp'])
+        '''Current horizontal formation offset in px (wobble + slow drift).'''
+        wobble = (math.sin(self.wobble_t * self.params['formation_wobble_speed'])
+                  * self.params['formation_wobble_amp'])
+        # slow drift keeps the formation mobile even when wobble is small
+        drift = math.sin(self.fleet_time * C.FORMATION_DRIFT_SPEED) * C.FORMATION_DRIFT_AMP
+        return wobble + drift
 
     def alive_enemies(self) -> list:
         '''Enemies that are not dead or off-screen.'''
@@ -351,6 +368,17 @@ class Fleet:
     def diving_count(self) -> int:
         '''Number of enemies currently dive-bombing.'''
         return sum(1 for e in self.enemies if e.state == DIVE)
+
+    def scatter_divers(self) -> None:
+        '''Send every dive-bomber back to its slot (a player was destroyed).'''
+        for e in self.enemies:
+            if e.state == DIVE:
+                e.state = REENTER
+                e.entry_t = 0.0
+                e.dive_target = None
+                sx, _sy = e.slot_world(0)
+                e.p0 = (e.x, e.y)
+                e.p1 = (sx + e.spiral_side * 160, max(60.0, e.y - 200.0))
 
     def update(self, dt: float, players: list, effects: 'Effects', sound: 'SoundBank') -> None:
         '''
@@ -414,25 +442,46 @@ class Fleet:
         if not candidates:
             return
 
-        # Decide wave shape: a V of 3-5, or a single/double run
+        # Decide wave shape: a V of 3-5, a pincer V from the wings,
+        # or a single/double run
         r = random.random()
 
-        if r < 0.45:
+        if r < self.params['dive_pincer_chance']:
+            shape = 'pincer'
             n = random.randint(3, 5)
+        elif r < self.params['dive_pincer_chance'] + 0.45:
             shape = 'v'
+            n = random.randint(3, 5)
         else:
-            n = random.randint(1, 2)
             shape = 'run'
+            n = random.randint(1, 2)
 
-        n = max(1, min(n, len(candidates), self.params['max_divers']))
+        n = max(1, min(n, len(candidates)))
 
-        wave = random.sample(candidates, n)
+        if shape == 'pincer':
+            left = [e for e in candidates if e.slot[1] < C.FORMATION_COLS / 2]
+            right = [e for e in candidates if e.slot[1] >= C.FORMATION_COLS / 2]
+            half = (n + 1) // 2
+            wing = random.choice([left, right])
+            other = right if wing is left else left
+            if len(wing) < half or len(other) < n - half:
+                wave = random.sample(candidates, n)
+            else:
+                wave = (random.sample(wing, half)
+                        + random.sample(other, n - half))
+        else:
+            wave = random.sample(candidates, n)
+
+        n = max(1, min(len(wave), self.params['max_divers']))
+        wave = wave[:n]
         mid = len(wave) // 2
+        spread = self.params['dive_spread']
 
         for i, e in enumerate(wave):
             e.state = DIVE
             e.dive_delay = 0.0 if shape == 'run' else abs(i - mid) * 0.12
-            e.dive_target_offset = (i - mid) * 46.0 if shape == 'v' else 0.0
+            e.dive_target_offset = (i - mid) * spread if shape != 'run' else 0.0
+            e.dive_aim_t = 0.0
             e.vx = 0.0
             e.vy = 60.0
             e.dive_fire_t = random.uniform(0.3, 0.9)
@@ -458,15 +507,29 @@ class Fleet:
 
             return
 
-        alive = [p for p in players if p.alive]
+        # only target players that can actually be hit right now (a ship
+        # that just respawned blinks and is immune for a few seconds); a
+        # diver with no legal target flies straight through
+        vulnerable = [p for p in players if p.alive and p.invuln <= 0]
 
-        if alive:
-            tgt = random.choice(alive)
-            target_x = tgt.x + e.dive_target_offset
-            target_y = e.y + 220.0
+        # re-aim on a cadence (with jitter) so the dive keeps a committed
+        # curve instead of re-locking every frame
+        e.dive_aim_t -= dt
+
+        if e.dive_aim_t <= 0 or e.dive_target is None or not e.dive_target.alive:
+            e.dive_target = random.choice(vulnerable) if vulnerable else None
+            e.dive_aim_t = random.uniform(C.DIVE_REAIM_MIN, C.DIVE_REAIM_MAX)
+
+        tgt = e.dive_target
+
+        if tgt is not None and tgt.alive:
+            # lead the target so the dive meets it where it will be
+            dist = max(0.0, (C.HEIGHT - 60) - e.y)
+            t = dist / max(1.0, self.params['dive_speed'])
+            target_x = tgt.x + tgt.vx * t + e.dive_target_offset
         else:
             target_x = C.WIDTH / 2 + e.dive_target_offset
-            target_y = e.y + 220.0
+        target_y = C.HEIGHT - 60.0
 
         dx, dy = target_x - e.x, target_y - e.y
         d = math.hypot(dx, dy) or 1.0
@@ -474,7 +537,7 @@ class Fleet:
         desired_vx, desired_vy = dx / d * sp, dy / d * sp
 
         # steering toward desired velocity -> smooth curve
-        turn = 2.4
+        turn = self.params['dive_turn']
         e.vx += (desired_vx - e.vx) * min(1.0, turn * dt)
         e.vy += (desired_vy - e.vy) * min(1.0, turn * dt)
 
@@ -489,7 +552,7 @@ class Fleet:
         # fire while diving
         e.dive_fire_t -= dt
 
-        if e.dive_fire_t <= 0 and alive and e.y < C.HEIGHT - 120:
+        if e.dive_fire_t <= 0 and vulnerable and e.y < C.HEIGHT - 120:
             self._fire_aimed(e, players, sound)
             e.dive_fire_t = random.uniform(0.5, 1.1)
 
@@ -525,7 +588,7 @@ class Fleet:
 
     def _fire_aimed(self, e: Enemy, players: list, sound: 'SoundBank') -> None:
         '''
-        Maybe fire from a formation enemy, aimed at the nearest player.
+        Fire an aimed shot; galagas may home, and shots may fan out 3-way.
 
         Args:
             e: the firing Enemy.
@@ -541,17 +604,57 @@ class Fleet:
         dx, dy = tgt.x - e.x, tgt.y - e.y
         d = math.hypot(dx, dy) or 1.0
         sp = self.params['enemy_bullet_speed']
-        homing = e.etype == 'boss' and random.random() < 0.5
+        homing = (e.etype == 'boss'
+                  and random.random() < self.params['boss_homing_chance']) or (
+            e.etype == 'galaga'
+            and random.random() < self.params['galaga_homing_chance'])
         self.bullets.append(EnemyBullet(e.x, e.y + 10, dx / d * sp, dy / d * sp, homing))
 
+        # 3-way spread: two extra bullets fanned around the aim direction;
+        # bosses use their own (later-ramping) chance, others the base one
+        chance = (self.params['boss_spread_chance'] if e.etype == 'boss'
+                  else self.params['spread_chance'])
+
+        if random.random() < chance:
+            ang = math.atan2(dy, dx)
+
+            for off in (-0.22, 0.22):
+                a = ang + off
+                self.bullets.append(EnemyBullet(
+                    e.x, e.y + 10, math.cos(a) * sp, math.sin(a) * sp, False))
+
     def formation_fire(self, players: list, sound: 'SoundBank', dt: float) -> None:
-        '''Occasional stray fire from enemies sitting in formation.'''
-        if random.random() < self.params['enemy_fire_chance'] * dt * 2.0:
+        '''Formation fire: a stray aimed shot, or a coordinated row burst.'''
+        if random.random() < self.params['enemy_fire_chance'] * dt * C.FORMATION_FIRE_RATE:
             cands = [e for e in self.enemies if e.state == FORMATION]
 
             if cands:
-                e = random.choice(cands)
-                self._fire_aimed(e, players, sound)
+                if random.random() < self.params['formation_burst_chance']:
+                    self._row_burst(cands, players, sound)
+                else:
+                    self._fire_aimed(random.choice(cands), players, sound)
+
+    def _row_burst(self, cands: list, players: list, sound: 'SoundBank') -> None:
+        '''
+        Fire a coordinated volley from a single formation row.
+
+        Args:
+            cands: formation enemies eligible to fire.
+            players: list of Player objects to aim at.
+            sound: SoundBank instance for the shot sound.
+        '''
+        rows: dict = {}
+
+        for e in cands:
+            rows.setdefault(e.slot[2], []).append(e)
+
+        row = random.choice(list(rows.values()))
+        row.sort(key=lambda e: e.slot[1])
+        n = min(len(row), self.params['formation_burst_shooters'])
+        shooters = random.sample(row, n)
+
+        for e in shooters:
+            self._fire_aimed(e, players, sound)
 
     def hit_enemy(self, e: Enemy, effects: 'Effects', sound: 'SoundBank') -> int:
         '''Apply a hit to an enemy. Returns points scored (0 if still alive).'''
@@ -636,7 +739,7 @@ class Fleet:
         elif e.etype == 'galaga':
             self._draw_galaga(surf, x, y, col, flap)
         else:
-            self._draw_boss(surf, x, y, col, flap, e.split)
+            self._draw_boss(surf, x, y, col, flap, e.split, e.elite)
 
     def _draw_bee(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
         '''
@@ -695,7 +798,7 @@ class Fleet:
         pygame.draw.circle(surf, C.RED, (x + 2, y - 9), 1)
 
     def _draw_boss(self, surf: pygame.Surface, x: int, y: int, col: tuple,
-                   flap: float, split: bool) -> None:
+                   flap: float, split: bool, elite: bool = False) -> None:
         '''
         Draw a boss sprite (wings flap; split state shown in red).
 
@@ -706,9 +809,11 @@ class Fleet:
             col: body color.
             flap: wing flap phase in [0, 1].
             split: boss has split and is flashing red.
+            elite: multi-hit boss, tinted yellow.
         '''
 
         gap = 4 if split else 0
+        body = C.YELLOW if elite else col
 
         # two halves
         for sgn in (-1, 1):
@@ -718,7 +823,7 @@ class Fleet:
             pygame.draw.ellipse(surf, C.PINK, (hx - 8 * sgn - (4 if sgn < 0 else 0),
                                                y - 4 - wing, 8, wing + 8))
             # body half
-            pygame.draw.ellipse(surf, col, (hx - 6, y - 12, 12, 24))
+            pygame.draw.ellipse(surf, body, (hx - 6, y - 12, 12, 24))
             pygame.draw.ellipse(surf, C.DARK_RED, (hx - 4, y - 8, 8, 16))
 
         # central face
@@ -727,5 +832,5 @@ class Fleet:
         pygame.draw.circle(surf, C.YELLOW, (x + 2, y - 6), 1)
 
         # mandibles
-        pygame.draw.line(surf, col, (x - 3, y + 8), (x - 6, y + 14), 2)
-        pygame.draw.line(surf, col, (x + 3, y + 8), (x + 6, y + 14), 2)
+        pygame.draw.line(surf, body, (x - 3, y + 8), (x - 6, y + 14), 2)
+        pygame.draw.line(surf, body, (x + 3, y + 8), (x + 6, y + 14), 2)

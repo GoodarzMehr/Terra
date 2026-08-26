@@ -153,6 +153,12 @@ class SoundBank:
             boom += _sweep(120, 28, n, wave='saw') * _envelope(n, decay=4.5) * 0.45
             s['explosion_boss'] = _to_sound(boom)
 
+            # Bomb: deep blast with a low rumble
+            n = int(0.5 * SAMPLE_RATE)
+            boom = _lowpass(_noise(n), 0.15) * _envelope(n, decay=9)
+            boom += _sweep(190, 40, n, wave='sine') * _envelope(n, decay=8) * 0.55
+            s['bomb'] = _to_sound(boom)
+
             # Dive whoosh: band-ish noise sweep with rising then falling gain
             n = int(0.42 * SAMPLE_RATE)
             env = np.sin(np.linspace(0, math.pi, n)) ** 1.5

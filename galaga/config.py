@@ -62,45 +62,90 @@ FORMATION_TOP = 90
 FORMATION_SLOT_W = 34.0
 FORMATION_SLOT_H = 34.0
 FORMATION_COLS = 10
-# 40 enemies: row layout (top -> bottom)
+# 40 enemies at level 1: row layout (top -> bottom)
 #   Boss row:    4 bosses centered
-#   Galaga rows: 2 rows x 10
-#   Bee rows:    2 rows x 10 + 2 extra bees flanking the top
+#   Galaga rows: 2 rows x 8 (centered)
+#   Bee rows:    2 rows x 10
+#   (later levels widen the galaga rows and add more rows / bosses)
 FORMATION_W = FORMATION_COLS * FORMATION_SLOT_W
 FORMATION_CX = WIDTH / 2.0
 
 ENEMY_BASE_FIRE_CHANCE = 0.16
 ENEMY_BULLET_BASE_SPEED = 300.0
-ENEMY_BULLET_SPEED_GROWTH = 20.0
+ENEMY_BULLET_SPEED_GROWTH = 5.5
 ENEMY_BULLET_MAX_SPEED = 600.0
 ENEMY_BULLET_W, ENEMY_BULLET_H = 5, 12
 
 DIVE_BASE_INTERVAL = 3.0       # s between dive waves at level 1
-DIVE_INTERVAL_DROP = 0.22      # faster each level
+DIVE_INTERVAL_DROP = 0.032    # faster each level
 DIVE_INTERVAL_MIN = 0.6
 DIVE_BASE_SPEED = 185.0
-DIVE_SPEED_GROWTH = 14.0
+DIVE_SPEED_GROWTH = 4.4
 DIVE_SPEED_MAX = 500.0
-FIRE_CHANCE_GROWTH = 0.065
+FIRE_CHANCE_GROWTH = 0.011
 FIRE_CHANCE_MAX = 1.0
-MAX_DIVERS_GROWTH = 2          # +1 simultaneous diver per 2 levels
+MAX_DIVERS_GROWTH = 10         # +1 simultaneous diver per 10 levels
 MAX_DIVERS_CAP = 8
 
 ENTRY_BASE_DELAY = 0.55        # s between entry groups at level 1
-ENTRY_DELAY_DROP = 0.05
+ENTRY_DELAY_DROP = 0.007
 ENTRY_DELAY_MIN = 0.16
 ENTRY_PATH_BASE_TIME = 2.6     # s to fly from off-screen to slot
-ENTRY_PATH_TIME_DROP = 0.15
+ENTRY_PATH_TIME_DROP = 0.018
 ENTRY_PATH_TIME_MIN = 0.8
 
 # Formation wobble (bounds are sanity limits, not a difficulty cap)
 WOBBLE_AMP_BASE = 26.0
-WOBBLE_AMP_GROWTH = 2.5
+WOBBLE_AMP_GROWTH = 1.2
 WOBBLE_AMP_MAX = 86.0
 WOBBLE_SPEED_BASE = 0.7
-WOBBLE_SPEED_GROWTH = 0.05
+WOBBLE_SPEED_GROWTH = 0.022
 WOBBLE_SPEED_MAX = 2.2
+# Slow whole-formation drift (sits on top of the wobble)
+FORMATION_DRIFT_AMP = 36.0     # px of horizontal drift
+FORMATION_DRIFT_SPEED = 0.15   # rad/s (~42 s period)
 
+# Meaner dives: turn rate, target spread, pincer V waves, re-aim cadence
+DIVE_TURN_BASE = 2.4
+DIVE_TURN_GROWTH = 0.019
+DIVE_TURN_MAX = 3.9
+DIVE_SPREAD_BASE = 46.0
+DIVE_SPREAD_GROWTH = 0.3
+DIVE_SPREAD_MAX = 71.0
+DIVE_PINCER_CHANCE_BASE = 0.0
+DIVE_PINCER_CHANCE_GROWTH = 0.006
+DIVE_PINCER_CHANCE_MAX = 0.5
+DIVE_REAIM_MIN = 0.8           # s between target re-aims while diving
+DIVE_REAIM_MAX = 1.5
+
+# Smarter formation fire: rate multiplier, row bursts, galaga homing, 3-way
+FORMATION_FIRE_RATE = 2.0      # multiplier on enemy_fire_chance
+FORMATION_BURST_CHANCE_BASE = 0.10
+FORMATION_BURST_CHANCE_GROWTH = 0.008
+FORMATION_BURST_CHANCE_MAX = 0.9
+FORMATION_BURST_STEP = 50      # +1 burst shooter per 50 levels
+FORMATION_BURST_MAX = 4
+GALAGA_HOMING_CHANCE_GROWTH = 0.004
+GALAGA_HOMING_CHANCE_MAX = 0.35
+SPREAD_CHANCE_GROWTH = 0.005
+SPREAD_CHANCE_MAX = 0.4
+
+# Boss upgrades (Tier 3): 3-way spread and level-scaled homing
+BOSS_SPREAD_CHANCE_GROWTH = 0.005
+BOSS_SPREAD_CHANCE_MAX = 0.5
+BOSS_HOMING_BASE = 0.15
+BOSS_HOMING_GROWTH = 0.008
+BOSS_HOMING_MAX = 0.90
+
+# Elite bosses: extra hit point every 25 levels (cap 4)
+ELITE_BOSS_STEP = 25
+ELITE_BOSS_MAX_HITS = 4
+
+# Fleet scaling (Tier 3): level thresholds for bigger formations
+FLEET_GALAGA_ROW_LEVEL = 15     # +1 galaga row
+FLEET_THIRD_GALAGA_ROW_LEVEL = 35  # +1 more galaga row
+FLEET_FIFTH_BOSS_LEVEL = 40     # 5th boss + a 3rd bee row
+FLEET_SIXTH_BOSS_LEVEL = 70     # 6th boss
 # Streak scoring
 STREAK_MAX = 6
 
@@ -111,6 +156,12 @@ POWERUP_FALL_SPEED = 110.0
 POWERUP_W, POWERUP_H = 26, 26
 TRIPLE_DURATION = 10.0
 RAPID_DURATION = 8.0
+
+# Bomb: one-shot fan of 15 shots in a 60-degree forward cone
+BOMB_FAN_SHOTS = 15
+BOMB_FAN_ANGLE = math.radians(60.0)
+BOMB_BULLET_SPEED = 560.0
+BOMB_START = 0
 
 # Score values
 SCORE_BEE = 50
@@ -145,8 +196,9 @@ def clamp(v: float, lo: float, hi: float) -> float:
 def level_params(level: int) -> dict:
     '''Return the difficulty scaling parameters for a given level (1-based).
 
-    Difficulty keeps escalating through ~level 30; the remaining bounds are
-    sanity floors/ceilings (dodgeable speeds, non-negative gaps, chance <= 1),
+    The ramp is deliberately slow: every parameter keeps escalating for
+    roughly levels 60-100 before it saturates at its bound, which is a
+    sanity floor/ceiling (dodgeable speeds, non-negative gaps, chance <= 1),
     not a difficulty cap.
     '''
     L = max(1, level)
@@ -170,37 +222,81 @@ def level_params(level: int) -> dict:
             WOBBLE_AMP_MAX - WOBBLE_AMP_BASE, WOBBLE_AMP_GROWTH * (L - 1)),
         'formation_wobble_speed': min(
             WOBBLE_SPEED_MAX, WOBBLE_SPEED_BASE + WOBBLE_SPEED_GROWTH * (L - 1)),
+        'dive_turn': min(
+            DIVE_TURN_MAX, DIVE_TURN_BASE + DIVE_TURN_GROWTH * (L - 1)),
+        'dive_spread': min(
+            DIVE_SPREAD_MAX, DIVE_SPREAD_BASE + DIVE_SPREAD_GROWTH * (L - 1)),
+        'dive_pincer_chance': min(
+            DIVE_PINCER_CHANCE_MAX,
+            DIVE_PINCER_CHANCE_BASE + DIVE_PINCER_CHANCE_GROWTH * (L - 1)),
+        'formation_burst_chance': min(
+            FORMATION_BURST_CHANCE_MAX,
+            FORMATION_BURST_CHANCE_BASE + FORMATION_BURST_CHANCE_GROWTH * (L - 1)),
+        'formation_burst_shooters': min(
+            FORMATION_BURST_MAX, 1 + (L - 1) // FORMATION_BURST_STEP),
+        'galaga_homing_chance': min(
+            GALAGA_HOMING_CHANCE_MAX, GALAGA_HOMING_CHANCE_GROWTH * (L - 1)),
+        'spread_chance': min(
+            SPREAD_CHANCE_MAX, SPREAD_CHANCE_GROWTH * (L - 1)),
+        'boss_spread_chance': min(
+            BOSS_SPREAD_CHANCE_MAX, BOSS_SPREAD_CHANCE_GROWTH * (L - 1)),
+        'boss_homing_chance': min(
+            BOSS_HOMING_MAX, BOSS_HOMING_BASE + BOSS_HOMING_GROWTH * (L - 1)),
     }
 
     return p
 
 
-def formation_slots() -> list:
-    '''Return the 40 (type, column, row) formation slots, classic layout.
+def fleet_composition(level: int) -> list:
+    '''Build the (type, column, row) formation slots for a level's fleet.
 
-    Layout (40 enemies):
-        row 0:      B  B  B  B          (4 bosses, centered)
-        row 1:   G G G G G G G G        (8 galagas, centered)
-        row 2:   G G G G G G G G        (8 galagas, centered)
-        row 3:  B B B B B B B B B B     (10 bees)
-        row 4:  B B B B B B B B B B     (10 bees)
+    Level 1 is the classic 40-enemy layout (8-wide galaga rows); later
+    levels widen the galaga rows, add more rows, and add extra bosses.
 
-    Total: 4 + 16 + 20 = 40
+    Args:
+        level: 1-based level number.
+
+    Returns:
+        List of (etype, col, row) tuples (max 76 enemies).
     '''
+    L = max(1, level)
+    n_bosses = 4
+    galaga_rows = 2
+    galaga_width = 8   # classic layout is 8-wide; widens to 10 later
+    bee_rows = 2
+
+    if L >= FLEET_GALAGA_ROW_LEVEL:
+        galaga_rows = 3
+        galaga_width = FORMATION_COLS
+
+    if L >= FLEET_THIRD_GALAGA_ROW_LEVEL:
+        galaga_rows = 4
+
+    if L >= FLEET_FIFTH_BOSS_LEVEL:
+        n_bosses = 5
+        bee_rows = 3
+
+    if L >= FLEET_SIXTH_BOSS_LEVEL:
+        n_bosses = 6
+
     slots = []
 
-    # Boss row (4 centered)
-    for i in range(4):
-        slots.append(('boss', 3 + i, 0))
+    # Boss row (centered)
+    first = (FORMATION_COLS - n_bosses) // 2
 
-    # Galaga rows (8 x 2, centered)
-    for row in (1, 2):
-        for col in range(1, 9):
+    for i in range(n_bosses):
+        slots.append(('boss', first + i, 0))
+
+    # Galaga rows (centered)
+    g_first = (FORMATION_COLS - galaga_width) // 2
+
+    for row in range(1, galaga_rows + 1):
+        for col in range(g_first, g_first + galaga_width):
             slots.append(('galaga', col, row))
 
-    # Bee rows (10 x 2)
-    for row in (3, 4):
-        for col in range(10):
+    # Bee rows (10 wide)
+    for row in range(galaga_rows + 1, galaga_rows + bee_rows + 1):
+        for col in range(FORMATION_COLS):
             slots.append(('bee', col, row))
 
     return slots

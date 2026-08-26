@@ -56,13 +56,31 @@ class HUD:
         self._text(surf, f'WAVE {level}', C.GREEN, C.WIDTH // 2, 30, self.font_m,
                    align='center')
 
-        # lives as tiny ships
+        # lives: one ship icon + a count, styled like the bomb counter
         for i, p in enumerate(players):
-            base_x = 16 if i == 0 else C.WIDTH - 16
+            if i == 0:
+                self._ship_icon(surf, 24, 58, C.GREEN)
+                self._text(surf, f'x{p.lives}', C.GREEN, 40, 49, self.font_s)
+            else:
+                self._ship_icon(surf, C.WIDTH - 24, 58, C.GREEN)
+                self._text(surf, f'x{p.lives}', C.GREEN, 0, 49, self.font_s,
+                           align='right', anchor_x=C.WIDTH - 40)
 
-            for j in range(max(0, p.lives - 1)):  # spare ships (current one is on field)
-                x = base_x + j * 22 if i == 0 else base_x - j * 22 - 16
-                self._ship_icon(surf, x + 8, 58, C.GREEN)
+        # bomb counts (top left for 1P, top right for 2P)
+        for i, p in enumerate(players):
+            if p.bombs <= 0:
+                continue
+
+            bx = 24 if i == 0 else C.WIDTH - 24
+            by = 84 if i == 0 else 100  # 2P: clear the enemy-status line
+            pygame.draw.circle(surf, C.ORANGE, (bx, by), 7)
+            pygame.draw.circle(surf, C.WHITE, (bx, by), 7, 2)
+
+            if i == 0:
+                self._text(surf, f'x{p.bombs}', C.ORANGE, bx + 14, by - 9, self.font_s)
+            else:
+                self._text(surf, f'x{p.bombs}', C.ORANGE, 0, by - 9, self.font_s,
+                           align='right', anchor_x=bx - 14)
 
         # enemy status (top right, small font)
         p = C.level_params(level)
@@ -130,11 +148,11 @@ class HUD:
         surf.blit(h2, h2.get_rect(center=(C.WIDTH // 2, 460)))
 
         # footer hints
-        f1 = self.font_s.render('UP/DOWN: SELECT MODE      ENTER: START      P: PAUSE      ESC: QUIT',
+        f1 = self.font_s.render('UP/DOWN: SELECT   ENTER: START   P: PAUSE   ESC: QUIT',
                                 True, C.LIGHT_GRAY)
 
         surf.blit(f1, f1.get_rect(center=(C.WIDTH // 2, 540)))
-        f2 = self.font_s.render('P1: ARROWS MOVE (AUTO-FIRE)        P2: A/D MOVE (AUTO-FIRE)',
+        f2 = self.font_s.render('P1: ARROWS MOVE (AUTO-FIRE, UP = BOMB)   P2: A/D MOVE (AUTO-FIRE, W = BOMB)',
                                 True, C.LIGHT_GRAY)
 
         surf.blit(f2, f2.get_rect(center=(C.WIDTH // 2, 566)))
