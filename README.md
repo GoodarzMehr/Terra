@@ -24,7 +24,7 @@ single folder.
 | 🐝 **Classic enemies** | Red **Bee** (fast & erratic), blue-green **Galaga** (medium), and the big two-part **Boss** (400 pts, takes 2 hits — the first splits it in half). |
 | 🛰️ **Choreographed entry** | The 40-ship formation flies in every level, with Bosses spiraling into their slots. |
 | 💥 **Dive-bomb waves** | Enemies break formation in V-formations and single runs, curving toward your position and firing as they dive. |
-| 📈 **Progressive difficulty** | Each level dives faster, fires more, and sends more simultaneous divers. The curve is capped at level 10 so the game stays beatable. |
+| 📈 **Progressive difficulty** | Each level dives faster, fires more, and sends more simultaneous divers. The curve keeps climbing past level 30 — dives are faster, more divers run at once, and enemy bullets get quicker — with only sanity bounds (dodgeable speeds, minimum gaps) left in place. |
 | 🔥 **Streak scoring** | Consecutive kills without getting hit double your points (×1 → ×6, the classic "streak" rule). Getting hit resets it to ×1. |
 | 🎁 **Power-ups** | Enemies drop **Triple Shot**, **Rapid Fire**, **Shield**, and **Extra Life**. Bosses always drop one. |
 | 👥 **Two-player co-op** | P1 and P2 each have their own ship, lives, and score. |

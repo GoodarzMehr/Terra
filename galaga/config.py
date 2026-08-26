@@ -72,26 +72,34 @@ FORMATION_CX = WIDTH / 2.0
 ENEMY_BASE_FIRE_CHANCE = 0.16
 ENEMY_BULLET_BASE_SPEED = 300.0
 ENEMY_BULLET_SPEED_GROWTH = 20.0
-ENEMY_BULLET_MAX_SPEED = 550.0
+ENEMY_BULLET_MAX_SPEED = 600.0
 ENEMY_BULLET_W, ENEMY_BULLET_H = 5, 12
 
 DIVE_BASE_INTERVAL = 3.0       # s between dive waves at level 1
 DIVE_INTERVAL_DROP = 0.22      # faster each level
-DIVE_INTERVAL_MIN = 0.85
+DIVE_INTERVAL_MIN = 0.6
 DIVE_BASE_SPEED = 185.0
 DIVE_SPEED_GROWTH = 14.0
-DIVE_SPEED_MAX = 320.0
+DIVE_SPEED_MAX = 500.0
 FIRE_CHANCE_GROWTH = 0.065
 FIRE_CHANCE_MAX = 1.0
 MAX_DIVERS_GROWTH = 2          # +1 simultaneous diver per 2 levels
-MAX_DIVERS_CAP = 6
+MAX_DIVERS_CAP = 8
 
 ENTRY_BASE_DELAY = 0.55        # s between entry groups at level 1
 ENTRY_DELAY_DROP = 0.05
-ENTRY_DELAY_MIN = 0.18
+ENTRY_DELAY_MIN = 0.16
 ENTRY_PATH_BASE_TIME = 2.6     # s to fly from off-screen to slot
 ENTRY_PATH_TIME_DROP = 0.15
-ENTRY_PATH_TIME_MIN = 1.1
+ENTRY_PATH_TIME_MIN = 0.8
+
+# Formation wobble (bounds are sanity limits, not a difficulty cap)
+WOBBLE_AMP_BASE = 26.0
+WOBBLE_AMP_GROWTH = 2.5
+WOBBLE_AMP_MAX = 86.0
+WOBBLE_SPEED_BASE = 0.7
+WOBBLE_SPEED_GROWTH = 0.05
+WOBBLE_SPEED_MAX = 2.2
 
 # Streak scoring
 STREAK_MAX = 6
@@ -137,8 +145,9 @@ def clamp(v: float, lo: float, hi: float) -> float:
 def level_params(level: int) -> dict:
     '''Return the difficulty scaling parameters for a given level (1-based).
 
-    Everything is capped so that from ~level 10 onward the game stops getting
-    harder (classic curve, still beatable).
+    Difficulty keeps escalating through ~level 30; the remaining bounds are
+    sanity floors/ceilings (dodgeable speeds, non-negative gaps, chance <= 1),
+    not a difficulty cap.
     '''
     L = max(1, level)
     p = {
@@ -157,8 +166,10 @@ def level_params(level: int) -> dict:
         'entry_path_time': clamp(
             ENTRY_PATH_BASE_TIME - ENTRY_PATH_TIME_DROP * (L - 1),
             ENTRY_PATH_TIME_MIN, 999),
-        'formation_wobble_amp': 26.0 + min(20.0, 2.0 * (L - 1)),
-        'formation_wobble_speed': 0.7 + 0.05 * (L - 1),
+        'formation_wobble_amp': WOBBLE_AMP_BASE + min(
+            WOBBLE_AMP_MAX - WOBBLE_AMP_BASE, WOBBLE_AMP_GROWTH * (L - 1)),
+        'formation_wobble_speed': min(
+            WOBBLE_SPEED_MAX, WOBBLE_SPEED_BASE + WOBBLE_SPEED_GROWTH * (L - 1)),
     }
 
     return p
