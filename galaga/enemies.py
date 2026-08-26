@@ -513,16 +513,18 @@ class Fleet:
         vulnerable = [p for p in players if p.alive and p.invuln <= 0]
 
         # re-aim on a cadence (with jitter) so the dive keeps a committed
-        # curve instead of re-locking every frame
+        # curve instead of re-locking every frame; a target that is dead
+        # or has just become immune (blinking) is dropped immediately
         e.dive_aim_t -= dt
 
-        if e.dive_aim_t <= 0 or e.dive_target is None or not e.dive_target.alive:
+        if (e.dive_aim_t <= 0 or e.dive_target is None
+                or not (e.dive_target.alive and e.dive_target.invuln <= 0)):
             e.dive_target = random.choice(vulnerable) if vulnerable else None
             e.dive_aim_t = random.uniform(C.DIVE_REAIM_MIN, C.DIVE_REAIM_MAX)
 
         tgt = e.dive_target
 
-        if tgt is not None and tgt.alive:
+        if tgt is not None and tgt.alive and tgt.invuln <= 0:
             # lead the target so the dive meets it where it will be
             dist = max(0.0, (C.HEIGHT - 60) - e.y)
             t = dist / max(1.0, self.params['dive_speed'])
