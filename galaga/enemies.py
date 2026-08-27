@@ -413,12 +413,19 @@ class Fleet:
                 self._update_reenter(e, dt, wx)
 
         # --- dive wave scheduling ---
+        # no new dive waves while every player is dead or still blinking
+        # (immune): the timer holds at zero so the first wave fires the
+        # moment a player becomes vulnerable again
+        vulnerable = [p for p in players if p.alive and p.invuln <= 0]
+
         if self.all_in_formation():
             self.dive_timer -= dt
 
-            if self.dive_timer <= 0:
+            if self.dive_timer <= 0 and vulnerable:
                 self._start_dive_wave(players, sound)
                 self.dive_timer = self.params['dive_interval'] * random.uniform(0.75, 1.25)
+            elif self.dive_timer <= 0:
+                self.dive_timer = 0.0
 
         # --- enemy bullets ---
         for b in self.bullets:
@@ -529,9 +536,12 @@ class Fleet:
             dist = max(0.0, (C.HEIGHT - 60) - e.y)
             t = dist / max(1.0, self.params['dive_speed'])
             target_x = tgt.x + tgt.vx * t + e.dive_target_offset
+            target_y = C.HEIGHT - 60.0
         else:
-            target_x = C.WIDTH / 2 + e.dive_target_offset
-        target_y = C.HEIGHT - 60.0
+            # no legal target (player dead or blinking): fly straight
+            # down and exit the screen, then re-enter the formation
+            target_x = e.x
+            target_y = C.HEIGHT + 80.0
 
         dx, dy = target_x - e.x, target_y - e.y
         d = math.hypot(dx, dy) or 1.0
