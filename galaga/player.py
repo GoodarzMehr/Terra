@@ -214,10 +214,6 @@ class Player:
         '''
         rapid = self.rapid_t > 0
         cooldown = C.PLAYER_RAPID_COOLDOWN if rapid else C.PLAYER_FIRE_COOLDOWN
-        active = [b for b in self.bullets if b.alive]
-
-        if len(active) >= C.MAX_PLAYER_BULLETS:
-            return
 
         y = self.y - C.PLAYER_H / 2
 

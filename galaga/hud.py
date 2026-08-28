@@ -88,7 +88,7 @@ class HUD:
                   f'FIRE {p["enemy_fire_chance"]:.0%}   '
                   f'DIVERS {p["max_divers"]}')
 
-        self._text(surf, status, C.LIGHT_GRAY, 0, 74, self.font_xs,
+        self._text(surf, status, C.LIGHT_GRAY, 0, 20, self.font_xs,
                    align='right', anchor_x=C.WIDTH - 16)
 
     def _ship_icon(self, surf: pygame.Surface, x: int, y: int, color: tuple) -> None:
