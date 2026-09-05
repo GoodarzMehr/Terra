@@ -117,8 +117,8 @@ class HUD:
             selected_mode: index of the highlighted menu mode.
         '''
         # title with layered color
-        title = self.font_xl.render('GALAGA', True, C.RED)
-        t2 = self.font_xl.render('GALAGA', True, C.ORANGE)
+        title = self.font_xl.render('TERRA', True, C.RED)
+        t2 = self.font_xl.render('TERRA', True, C.ORANGE)
         surf.blit(t2, t2.get_rect(center=(C.WIDTH // 2, 150)))
         surf.blit(title, title.get_rect(center=(C.WIDTH // 2, 148)))
         sub = self.font_m.render('CO-OP ARCADE ACTION', True, C.CYAN)

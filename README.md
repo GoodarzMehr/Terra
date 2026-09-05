@@ -1,10 +1,12 @@
 <div align="center">
 
-# 🚀 GALAGA
+# 🚀 TERRA
 
 ### *A classic arcade shooter, rebuilt in Python*
 
-A colorful, arcade-style **Galaga** clone built with [`pygame`](https://www.pygame.org).
+Defend the Earth from the invading forces of Kryova.
+
+A colorful, arcade-style **TERRA** clone built with [`pygame`](https://www.pygame.org).
 **Zero external assets** — every sprite is drawn with pygame primitives and every
 sound effect is synthesized at runtime with numpy, so the entire game ships in a
 single folder.
@@ -21,8 +23,8 @@ single folder.
 
 | | |
 | :-- | :-- |
-| 🐝 **Classic enemies** | Red **Bee** (fast & erratic), blue-green **Galaga** (medium), and the big two-part **Boss** (400 pts, takes 2 hits — the first splits it in half). From level 25, **elite** Bosses (tinted yellow) take 3 hits, and from level 50 they take 4. |
-| 🛰️ **Choreographed entry** | The formation flies in every level, with Bosses spiraling into their slots. It starts as the classic 40-ship layout and scales up to 76 ships as the levels climb (extra Galaga rows, a 3rd Bee row, and a 5th/6th Boss). |
+| 🐝 **Classic enemies** | Red **Bee** (fast & erratic), blue-green **TERRA** (medium), and the big two-part **Boss** (400 pts, takes 2 hits — the first splits it in half). From level 25, **elite** Bosses (tinted yellow) take 3 hits, and from level 50 they take 4. |
+| 🛰️ **Choreographed entry** | The formation flies in every level, with Bosses spiraling into their slots. It starts as the classic 40-ship layout and scales up to 76 ships as the levels climb (extra TERRA rows, a 3rd Bee row, and a 5th/6th Boss). |
 | 💥 **Dive-bomb waves** | Enemies break formation in V-formations and single runs, curving toward your position and firing as they dive. When your ship is destroyed, divers scatter back to formation instead of hunting your respawn, and no new dive waves start until you respawn and your blinking immunity wears off. A diver that loses its target flies straight through and exits the screen. |
 | 📈 **Progressive difficulty** | Each level dives faster, fires more, and sends more simultaneous divers. Bosses get meaner too: their aimed fire can fan out into a 3-way spread, and their homing-bullet chance ramps from 15% to 90% over the first ~95 levels. The ramp is deliberately slow: every parameter keeps escalating for roughly levels 60–100 before it saturates at a sanity bound (dodgeable speeds, minimum gaps), so the game stays in a long "endless escalation" arc. |
 | 🔥 **Streak scoring** | Consecutive kills without getting hit double your points (×1 → ×6, the classic "streak" rule). Getting hit resets it to ×1. |
@@ -78,9 +80,9 @@ python main.py --selftest   # prints SELFTEST OK on success
 
 | Enemy | Points |
 | :--- | :---: |
-| 🐝 Bee | 50 |
-| 🛸 Galaga | 100 |
-| 👾 Boss | 400 |
+| 🐝 Bee | 5 |
+| 🛸 Hornet | 10 |
+| 👾 Boss | 40 |
 
 Points are multiplied by your current streak (×1–×6). A kill on a **diving**
 enemy is worth double its base value.
@@ -98,11 +100,11 @@ enemy is worth double its base value.
 ## 🗂️ Project layout
 
 ```text
-Galaga/
+TERRA/
 ├── main.py            entry point, game loop, state machine
 ├── requirements.txt   pygame + numpy
 ├── LICENSE            MIT
-└── galaga/
+└── terra/
     ├── config.py      screen size, palette, physics, difficulty curve
     ├── starfield.py   3-layer parallax scrolling stars
     ├── player.py      Player + PlayerBullet

@@ -41,7 +41,7 @@ class Enemy:
         Create an enemy of the given type in its formation slot.
 
         Args:
-            etype: enemy type ('bee', 'galaga', or 'boss').
+            etype: enemy type ('bee', 'terra', or 'boss').
             slot_index: index of this enemy's formation slot.
             slot: (col, row) of the formation slot.
             level: 1-based level (bosses gain extra hits over time).
@@ -89,7 +89,7 @@ class Enemy:
         if self.etype == 'boss':
             return 34
 
-        if self.etype == 'galaga':
+        if self.etype == 'terra':
             return 24
 
         return 20
@@ -112,7 +112,7 @@ class Enemy:
         Returns:
             The score value.
         '''
-        base = {'bee': C.SCORE_BEE, 'galaga': C.SCORE_GALAGA, 'boss': C.SCORE_BOSS}[self.etype]
+        base = {'bee': C.SCORE_BEE, 'terra': C.SCORE_TERRA, 'boss': C.SCORE_BOSS}[self.etype]
 
         if diving:
             base *= C.DIVE_BONUS_MULTIPLIER
@@ -121,7 +121,7 @@ class Enemy:
 
     def color(self) -> tuple:
         '''Primary sprite color for this enemy type.'''
-        return {'bee': C.BEE_COLOR, 'galaga': C.GALAGA_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
+        return {'bee': C.BEE_COLOR, 'terra': C.TERRA_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
 
     def slot_world(self, wobble_x: float) -> tuple:
         '''
@@ -600,7 +600,7 @@ class Fleet:
 
     def _fire_aimed(self, e: Enemy, players: list, sound: 'SoundBank') -> None:
         '''
-        Fire an aimed shot; galagas may home, and shots may fan out 3-way.
+        Fire an aimed shot; terras may home, and shots may fan out 3-way.
 
         Args:
             e: the firing Enemy.
@@ -618,8 +618,8 @@ class Fleet:
         sp = self.params['enemy_bullet_speed']
         homing = (e.etype == 'boss'
                   and random.random() < self.params['boss_homing_chance']) or (
-            e.etype == 'galaga'
-            and random.random() < self.params['galaga_homing_chance'])
+            e.etype == 'terra'
+            and random.random() < self.params['terra_homing_chance'])
         self.bullets.append(EnemyBullet(e.x, e.y + 10, dx / d * sp, dy / d * sp, homing))
 
         # 3-way spread: two extra bullets fanned around the aim direction;
@@ -694,7 +694,7 @@ class Fleet:
             effects.shake(C.BOSS_SHAKE_MAGNITUDE, C.BOSS_SHAKE_DURATION)
             effects.flash(color, 0.12)
             sound.play('explosion_boss')
-        elif e.etype == 'galaga':
+        elif e.etype == 'terra':
             effects.explosion(e.x, e.y, color, 26, 250, 0.6, 3)
             effects.shake(C.SHAKE_MAGNITUDE, C.SHAKE_DURATION)
             sound.play('explosion_small')
@@ -748,8 +748,8 @@ class Fleet:
 
         if e.etype == 'bee':
             self._draw_bee(surf, x, y, col, flap)
-        elif e.etype == 'galaga':
-            self._draw_galaga(surf, x, y, col, flap)
+        elif e.etype == 'terra':
+            self._draw_terra(surf, x, y, col, flap)
         else:
             self._draw_boss(surf, x, y, col, flap, e.split, e.elite)
 
@@ -780,9 +780,9 @@ class Fleet:
         pygame.draw.circle(surf, C.WHITE, (x - 3, y - 6), 1)
         pygame.draw.circle(surf, C.WHITE, (x + 3, y - 6), 1)
 
-    def _draw_galaga(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
+    def _draw_terra(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
         '''
-        Draw a galaga sprite (wings flap with the flap phase).
+        Draw a terra sprite (wings flap with the flap phase).
 
         Args:
             surf: surface to draw on.

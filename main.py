@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''GALAGA — a colorful co-op arcade shooter in pygame.
+'''TERRA — a colorful co-op arcade shooter in pygame.
 
 Run:      python main.py
 Fullscr:  python main.py --fullscreen  (fills the monitor, fits any screen)
@@ -19,15 +19,15 @@ import sys
 
 import pygame
 
-from galaga import config as C
-from galaga.enemies import Fleet
-from galaga.hud import HUD
-from galaga.levels import LevelManager
-from galaga.particles import Effects
-from galaga.player import Player
-from galaga.powerups import PowerupManager
-from galaga.sound import SoundBank
-from galaga.starfield import Starfield
+from terra import config as C
+from terra.enemies import Fleet
+from terra.hud import HUD
+from terra.levels import LevelManager
+from terra.particles import Effects
+from terra.player import Player
+from terra.powerups import PowerupManager
+from terra.sound import SoundBank
+from terra.starfield import Starfield
 
 # Game states
 MENU = 'menu'
