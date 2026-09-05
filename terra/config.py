@@ -44,7 +44,7 @@ LIGHT_GRAY = (200, 204, 220)
 
 # Enemy colors
 BEE_COLOR = RED
-TERRA_COLOR = CYAN
+HORNET_COLOR = CYAN
 BOSS_COLOR = MAGENTA
 
 ############################## Player Physics ################################
@@ -123,41 +123,60 @@ ENTRY_PATH_TIME_MIN = 1.0   # minimum time for an enemy to fly from off-screen
                             # to its formation slot (seconds)
 
 # Formation wobble
-WOBBLE_AMP_BASE = 24.0
-WOBBLE_AMP_GROWTH = 1.2
-WOBBLE_AMP_MAX = 88.0
-WOBBLE_SPEED_BASE = 0.6
-WOBBLE_SPEED_GROWTH = 0.03
-WOBBLE_SPEED_MAX = 2.4
+WOBBLE_AMP_BASE = 24.0     # base amplitude of enemy formation wobble (px)
+WOBBLE_AMP_GROWTH = 1.2    # increase in amplitude of enemy formation wobble
+                           # per level (px)
+WOBBLE_AMP_MAX = 88.0      # maximum amplitude of enemy formation wobble (px)
+WOBBLE_SPEED_BASE = 0.6    # base speed of enemy formation wobble (rad/s)
+WOBBLE_SPEED_GROWTH = 0.03 # increase in speed of enemy formation wobble per
+                           # level (rad/s)
+WOBBLE_SPEED_MAX = 2.4     # maximum speed of enemy formation wobble (rad/s)
 
-# Slow whole-formation drift (sits on top of the wobble)
-FORMATION_DRIFT_AMP = 36.0     # px of horizontal drift
-FORMATION_DRIFT_SPEED = 0.2   # rad/s (~42 s period)
+# Slow whole-formation drift (in addition to the wobble)
+FORMATION_DRIFT_AMP = 36.0  # amplitude of whole-formation drift (px)
+FORMATION_DRIFT_SPEED = 0.2 # speed of whole-formation drift (rad/s)
 
-# Meaner dives: turn rate, target spread, pincer V waves, re-aim cadence
-DIVE_TURN_BASE = 2.4
-DIVE_TURN_GROWTH = 0.04
-DIVE_TURN_MAX = 4.0
-DIVE_SPREAD_BASE = 40.0
-DIVE_SPREAD_GROWTH = 0.8
-DIVE_SPREAD_MAX = 72.0
-DIVE_PINCER_CHANCE_BASE = 0.0
-DIVE_PINCER_CHANCE_GROWTH = 0.01
-DIVE_PINCER_CHANCE_MAX = 0.5
-DIVE_REAIM_MIN = 0.8           # s between target re-aims while diving
-DIVE_REAIM_MAX = 1.6
+# Dive mechanics
+DIVE_TURN_BASE = 2.4             # base turn rate (rad/s) for divers to turn
+                                 # toward the player
+DIVE_TURN_GROWTH = 0.04          # increase in turn rate (rad/s) per level for
+                                 # divers to turn toward the player
+DIVE_TURN_MAX = 4.0              # maximum turn rate (rad/s) for divers to
+                                 # turn toward the player
+DIVE_SPREAD_BASE = 40.0          # base spread angle for divers to fan out
+                                 # when diving (degrees)
+DIVE_SPREAD_GROWTH = 0.8         # increase in spread angle for divers to fan
+                                 # out when diving per level (degrees)
+DIVE_SPREAD_MAX = 72.0           # maximum spread angle for divers to fan out
+                                 # when diving (degrees)
+DIVE_PINCER_CHANCE_BASE = 0.0    # base chance of a pincer dive
+DIVE_PINCER_CHANCE_GROWTH = 0.01 # increase in chance of a pincer dive per
+                                 # level
+DIVE_PINCER_CHANCE_MAX = 0.5     # maximum chance of a pincer dive
+DIVE_REAIM_MIN = 0.8             # minimum time between re-aims for divers
+                                 # (seconds)
+DIVE_REAIM_MAX = 1.6             # maximum time between re-aims for divers
+                                 # (seconds)
 
-# Smarter formation fire: rate multiplier, row bursts, terra homing, 3-way
-FORMATION_FIRE_RATE = 2.0      # multiplier on enemy_fire_chance
-FORMATION_BURST_CHANCE_BASE = 0.1
-FORMATION_BURST_CHANCE_GROWTH = 0.02
-FORMATION_BURST_CHANCE_MAX = 0.9
-FORMATION_BURST_STEP = 50      # +1 burst shooter per 50 levels
-FORMATION_BURST_MAX = 4
-TERRA_HOMING_CHANCE_GROWTH = 0.01
-TERRA_HOMING_CHANCE_MAX = 0.4
-SPREAD_CHANCE_GROWTH = 0.01
-SPREAD_CHANCE_MAX = 0.5
+# Formation fire
+FORMATION_FIRE_RATE = 2.0            # multiplier on enemy fire chance
+FORMATION_BURST_CHANCE_BASE = 0.1    # base chance of a formation burst (shots
+                                     # from multiple enemies in a formation) 
+FORMATION_BURST_CHANCE_GROWTH = 0.02 # increase in chance of a formation burst
+                                     # per level
+FORMATION_BURST_CHANCE_MAX = 0.9     # maximum chance of a formation burst
+FORMATION_BURST_STEP = 50            # number of levels required to increase
+                                     # the number of shooters in a formation
+                                     # burst by 1
+FORMATION_BURST_MAX = 4              # maximum number of shooters in a
+                                     # formation burst
+HORNET_HOMING_CHANCE_GROWTH = 0.01   # increase in chance of hornet homing in
+                                     # on the player per level
+HORNET_HOMING_CHANCE_MAX = 0.4       # maximum chance of hornet homing in on
+                                     # the player
+SPREAD_CHANCE_GROWTH = 0.01          # increase in chance of spread shot per
+                                     # level
+SPREAD_CHANCE_MAX = 0.5              # maximum chance of spread shot
 
 # Boss upgrades (Tier 3): 3-way spread and level-scaled homing
 BOSS_SPREAD_CHANCE_GROWTH = 0.01
@@ -234,54 +253,46 @@ def clamp(v: float, lo: float, hi: float) -> float:
 
 
 def level_params(level: int) -> dict:
-    '''Return the difficulty scaling parameters for a given level (1-based).
-
-    The ramp is deliberately slow: every parameter keeps escalating for
-    roughly levels 60-100 before it saturates at its bound, which is a
-    sanity floor/ceiling (dodgeable speeds, non-negative gaps, chance <= 1),
-    not a difficulty cap.
+    '''
+    Return the difficulty scaling parameters for a given level.
+    
+    Args:
+        level: level number.
+    
+    Returns:
+        p: dictionary of level-scaled parameters.
     '''
     L = max(1, level)
+
     p = {
-        'dive_interval': clamp(
-            DIVE_INTERVAL_BASE - DIVE_INTERVAL_DROP * (L - 1), DIVE_INTERVAL_MIN, 999),
-        'enemy_fire_chance': clamp(
-            FIRE_CHANCE_BASE + FIRE_CHANCE_GROWTH * (L - 1), 0.0, FIRE_CHANCE_MAX),
+        'dive_interval': clamp(DIVE_INTERVAL_BASE - DIVE_INTERVAL_DROP * (L - 1), DIVE_INTERVAL_MIN, 9),
+        'enemy_fire_chance': clamp(FIRE_CHANCE_BASE + FIRE_CHANCE_GROWTH * (L - 1), 0.0, FIRE_CHANCE_MAX),
         'enemy_bullet_speed': clamp(
             ENEMY_BULLET_SPEED_BASE + ENEMY_BULLET_SPEED_GROWTH * (L - 1),
-            ENEMY_BULLET_SPEED_BASE, ENEMY_BULLET_MAX_SPEED),
-        'dive_speed': clamp(
-            DIVE_SPEED_BASE + DIVE_SPEED_GROWTH * (L - 1), DIVE_SPEED_BASE, DIVE_SPEED_MAX),
+            ENEMY_BULLET_SPEED_BASE,
+            ENEMY_BULLET_MAX_SPEED
+        ),
+        'dive_speed': clamp(DIVE_SPEED_BASE + DIVE_SPEED_GROWTH * (L - 1), DIVE_SPEED_BASE, DIVE_SPEED_MAX),
         'max_divers': min(MAX_DIVERS_CAP, 1 + (L - 1) // MAX_DIVERS_GROWTH),
-        'entry_delay': clamp(
-            ENTRY_DELAY_BASE - ENTRY_DELAY_DROP * (L - 1), ENTRY_DELAY_MIN, 999),
-        'entry_path_time': clamp(
-            ENTRY_PATH_TIME_BASE - ENTRY_PATH_TIME_DROP * (L - 1),
-            ENTRY_PATH_TIME_MIN, 999),
-        'formation_wobble_amp': WOBBLE_AMP_BASE + min(
-            WOBBLE_AMP_MAX - WOBBLE_AMP_BASE, WOBBLE_AMP_GROWTH * (L - 1)),
-        'formation_wobble_speed': min(
-            WOBBLE_SPEED_MAX, WOBBLE_SPEED_BASE + WOBBLE_SPEED_GROWTH * (L - 1)),
-        'dive_turn': min(
-            DIVE_TURN_MAX, DIVE_TURN_BASE + DIVE_TURN_GROWTH * (L - 1)),
-        'dive_spread': min(
-            DIVE_SPREAD_MAX, DIVE_SPREAD_BASE + DIVE_SPREAD_GROWTH * (L - 1)),
+        'entry_delay': clamp(ENTRY_DELAY_BASE - ENTRY_DELAY_DROP * (L - 1), ENTRY_DELAY_MIN, 9),
+        'entry_path_time': clamp(ENTRY_PATH_TIME_BASE - ENTRY_PATH_TIME_DROP * (L - 1), ENTRY_PATH_TIME_MIN, 9),
+        'formation_wobble_amp': WOBBLE_AMP_BASE + min(WOBBLE_AMP_MAX - WOBBLE_AMP_BASE, WOBBLE_AMP_GROWTH * (L - 1)),
+        'formation_wobble_speed': min(WOBBLE_SPEED_MAX, WOBBLE_SPEED_BASE + WOBBLE_SPEED_GROWTH * (L - 1)),
+        'dive_turn': min(DIVE_TURN_MAX, DIVE_TURN_BASE + DIVE_TURN_GROWTH * (L - 1)),
+        'dive_spread': min(DIVE_SPREAD_MAX, DIVE_SPREAD_BASE + DIVE_SPREAD_GROWTH * (L - 1)),
         'dive_pincer_chance': min(
             DIVE_PINCER_CHANCE_MAX,
-            DIVE_PINCER_CHANCE_BASE + DIVE_PINCER_CHANCE_GROWTH * (L - 1)),
+            DIVE_PINCER_CHANCE_BASE + DIVE_PINCER_CHANCE_GROWTH * (L - 1)
+        ),
         'formation_burst_chance': min(
             FORMATION_BURST_CHANCE_MAX,
-            FORMATION_BURST_CHANCE_BASE + FORMATION_BURST_CHANCE_GROWTH * (L - 1)),
-        'formation_burst_shooters': min(
-            FORMATION_BURST_MAX, 1 + (L - 1) // FORMATION_BURST_STEP),
-        'terra_homing_chance': min(
-            TERRA_HOMING_CHANCE_MAX, TERRA_HOMING_CHANCE_GROWTH * (L - 1)),
-        'spread_chance': min(
-            SPREAD_CHANCE_MAX, SPREAD_CHANCE_GROWTH * (L - 1)),
-        'boss_spread_chance': min(
-            BOSS_SPREAD_CHANCE_MAX, BOSS_SPREAD_CHANCE_GROWTH * (L - 1)),
-        'boss_homing_chance': min(
-            BOSS_HOMING_MAX, BOSS_HOMING_BASE + BOSS_HOMING_GROWTH * (L - 1)),
+            FORMATION_BURST_CHANCE_BASE + FORMATION_BURST_CHANCE_GROWTH * (L - 1)
+        ),
+        'formation_burst_shooters': min(FORMATION_BURST_MAX, 1 + (L - 1) // FORMATION_BURST_STEP),
+        'terra_homing_chance': min(HORNET_HOMING_CHANCE_MAX, HORNET_HOMING_CHANCE_GROWTH * (L - 1)),
+        'spread_chance': min(SPREAD_CHANCE_MAX, SPREAD_CHANCE_GROWTH * (L - 1)),
+        'boss_spread_chance': min(BOSS_SPREAD_CHANCE_MAX, BOSS_SPREAD_CHANCE_GROWTH * (L - 1)),
+        'boss_homing_chance': min(BOSS_HOMING_MAX, BOSS_HOMING_BASE + BOSS_HOMING_GROWTH * (L - 1)),
     }
 
     return p

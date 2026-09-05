@@ -8,7 +8,7 @@ Selftest: python main.py --selftest   (headless, prints SELFTEST OK)
 Controls
   P1: LEFT/RIGHT move (auto-fire)
   P2: A/D move (auto-fire)
-  P pause, Enter confirm, Esc quit
+  P: pause, M: mute/unmute, Enter: confirm, Esc: quit
 
 '''
 
@@ -26,7 +26,7 @@ from terra.levels import LevelManager
 from terra.particles import Effects
 from terra.player import Player
 from terra.powerups import PowerupManager
-from terra.sound import SoundBank
+from terra.sound import SAMPLE_RATE, SoundBank
 from terra.starfield import Starfield
 
 # Game states
@@ -45,6 +45,7 @@ class Game:
             os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
             os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
 
+        pygame.mixer.pre_init(SAMPLE_RATE, -16, 2, 512)
         pygame.init()
         pygame.display.set_caption(C.TITLE)
 
@@ -70,7 +71,7 @@ class Game:
                 dw = dh = None
 
             if dw and dh:
-                margin = 48  # headroom for title bar / taskbar
+                margin = 320  # headroom for title bar / taskbar
                 scale = min(1.0, (dw - margin) / C.WINDOW_W, (dh - margin) / C.WINDOW_H)
 
                 if scale < 1.0:
@@ -157,6 +158,8 @@ class Game:
             elif ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_ESCAPE:
                     self.quit()
+                elif ev.key == pygame.K_m:
+                    self.sound.muted = not self.sound.muted
                 elif ev.key == pygame.K_p:
                     if self.state == PLAYING:
                         self.paused = not self.paused

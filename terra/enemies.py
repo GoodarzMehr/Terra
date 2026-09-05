@@ -121,7 +121,7 @@ class Enemy:
 
     def color(self) -> tuple:
         '''Primary sprite color for this enemy type.'''
-        return {'bee': C.BEE_COLOR, 'terra': C.TERRA_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
+        return {'bee': C.BEE_COLOR, 'terra': C.HORNET_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
 
     def slot_world(self, wobble_x: float) -> tuple:
         '''

@@ -7,28 +7,20 @@ so the game still runs.
 '''
 
 import math
-
 import pygame
+import numpy as np
 
 
-try:
-    import numpy as np
-
-    _HAVE_NUMPY = True
-except ImportError:  # pragma: no cover - numpy is in requirements
-    np = None
-    _HAVE_NUMPY = False
+SAMPLE_RATE = 48000
 
 
-SAMPLE_RATE = 22050
-
-
-def _to_sound(samples: 'np.ndarray') -> pygame.mixer.Sound:
+def _to_sound(samples: np.ndarray) -> pygame.mixer.Sound:
     '''Convert a float numpy array (-1..1) to a pygame Sound (mono int16).'''
     clipped = np.clip(samples, -1.0, 1.0)
     arr = (clipped * 32767).astype(np.int16)
+    stereo = np.column_stack([arr, arr])
 
-    return pygame.sndarray.make_sound(arr)
+    return pygame.sndarray.make_sound(stereo)
 
 
 def _envelope(n: int, attack: float = 0.005, decay: float = None) -> 'np.ndarray':
@@ -116,18 +108,17 @@ class SoundBank:
 
     def _build(self) -> None:
         '''Synthesize every sound into the bank.'''
-        if not _HAVE_NUMPY:
-            return
-
         try:
-            pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, 256)
+            pygame.mixer.pre_init(SAMPLE_RATE, -16, 2, 512)
 
             if not pygame.mixer.get_init():
-                pygame.mixer.init(SAMPLE_RATE, -16, 1, 256)
+                pygame.mixer.init(SAMPLE_RATE, -16, 2, 512)
         except pygame.error:
+            print('Warning: audio mixer unavailable, sound disabled.')
             return
 
         if not pygame.mixer.get_init():
+            print('Warning: audio mixer failed to initialize, sound disabled.')
             return
 
         try:
@@ -147,11 +138,13 @@ class SoundBank:
             boom += _sweep(160, 40, n, wave='sine') * _envelope(n, decay=7) * 0.5
             s['explosion_big'] = _to_sound(boom * 0.9)
 
-            # Boss explosion: huge
-            n = int(0.8 * SAMPLE_RATE)
-            boom = _lowpass(_noise(n), 0.07) * _envelope(n, decay=5)
-            boom += _sweep(120, 28, n, wave='saw') * _envelope(n, decay=4.5) * 0.45
-            s['explosion_boss'] = _to_sound(boom)
+            # Boss explosion: huge, layered noise blast with an initial crack
+            n = int(0.9 * SAMPLE_RATE)
+            boom = _lowpass(_noise(n), 0.06) * _envelope(n, decay=4.5)
+            boom += _sweep(90, 30, n, wave='sine') * _envelope(n, decay=5) * 0.6
+            crack_n = int(0.05 * SAMPLE_RATE)
+            boom[:crack_n] += _lowpass(_noise(crack_n), 0.5) * _envelope(crack_n, decay=40) * 0.8
+            s['explosion_boss'] = _to_sound(boom * 0.9)
 
             # Bomb: deep blast with a low rumble
             n = int(0.5 * SAMPLE_RATE)
@@ -213,6 +206,7 @@ class SoundBank:
             n = int(0.06 * SAMPLE_RATE)
             s['ui'] = _to_sound(_sine(880, n) * _envelope(n, decay=40) * 0.35)
         except Exception:
+            print('Warning: sound synthesis failed, sound disabled.')
             # Any failure -> stay silent rather than crash the game
             self.sounds.clear()
 
