@@ -170,6 +170,8 @@ FORMATION_BURST_STEP = 50            # number of levels required to increase
                                      # burst by 1
 FORMATION_BURST_MAX = 4              # maximum number of shooters in a
                                      # formation burst
+
+# Hornet characteristics
 HORNET_HOMING_CHANCE_GROWTH = 0.01   # increase in chance of hornet homing in
                                      # on the player per level
 HORNET_HOMING_CHANCE_MAX = 0.4       # maximum chance of hornet homing in on
@@ -178,33 +180,38 @@ SPREAD_CHANCE_GROWTH = 0.01          # increase in chance of spread shot per
                                      # level
 SPREAD_CHANCE_MAX = 0.5              # maximum chance of spread shot
 
-# Boss upgrades (Tier 3): 3-way spread and level-scaled homing
-BOSS_SPREAD_CHANCE_GROWTH = 0.01
-BOSS_SPREAD_CHANCE_MAX = 0.5
-BOSS_HOMING_BASE = 0.1
-BOSS_HOMING_GROWTH = 0.02
-BOSS_HOMING_MAX = 0.9
+# Boss characteristics
+BOSS_SPREAD_CHANCE_GROWTH = 0.01 # increase in chance of boss spread shot per
+                                 # level
+BOSS_SPREAD_CHANCE_MAX = 0.5     # maximum chance of boss spread shot
+BOSS_HOMING_BASE = 0.1           # base chance of boss homing in on the player
+BOSS_HOMING_GROWTH = 0.02        # increase in chance of boss homing in on the
+                                 # player per level
+BOSS_HOMING_MAX = 0.9            # maximum chance of boss homing in on the
+                                 # player
 
-# Elite bosses: extra hit point every 25 levels (cap 4)
-ELITE_BOSS_STEP = 20
-ELITE_BOSS_MAX_HITS = 4
+# Elite boss characteristics
+ELITE_BOSS_STEP = 30    # number of levels required to increase the maximum
+                        # number of hits an elite boss can take by 1
+ELITE_BOSS_MAX_HITS = 6 # maximum number of hits an elite boss can take
 
-# Fleet scaling (Tier 3): level thresholds for bigger formations
-FLEET_TERRA_ROW_LEVEL = 10     # +1 terra row
-FLEET_FIFTH_BOSS_LEVEL = 20     # 5th boss
-WIDEN_TERRA_ROWS_LEVEL = 30                # terra rows widen to 10-wide
-FLEET_THIRD_BEE_ROW_LEVEL = 40   # 3rd bee row
-FLEET_SIXTH_BOSS_LEVEL = 50     # 6th boss
-FLEET_FOURTH_BEE_ROW_LEVEL = 60    # 4th bee row
-SECOND_WIDEN_TERRA_ROWS_LEVEL = 70  # 2nd time terra rows widen
-FLEET_SEVENTH_BOSS_LEVEL = 80   # 7th boss
-FLEET_FIFTH_BEE_ROW_LEVEL = 90     # 5th bee row
-FLEET_EIGHTH_BOSS_LEVEL = 100    # 8th boss
-FLEET_SECOND_TERRA_ROW_LEVEL = 110     # +1 terra row
-FLEET_NINTH_BOSS_LEVEL = 120    # 9th boss
-FLEET_TENTH_BOSS_LEVEL = 140    # 10th boss
-FLEET_ELEVENTH_BOSS_LEVEL = 160    # 11th boss
-FLEET_TWELFTH_BOSS_LEVEL = 180    # 12th boss
+# Fleet scaling
+FLEET_THIRD_HORNET_ROW_LEVEL = 10    # 3rd hornet row level
+FLEET_FIFTH_BOSS_LEVEL = 20          # 5th boss level
+FLEET_TEN_WIDE_HORNET_LEVEL = 30     # 10-wide hornet row level
+FLEET_THIRD_BEE_ROW_LEVEL = 40       # 3rd bee row level
+FLEET_SIXTH_BOSS_LEVEL = 50          # 6th boss level
+FLEET_FOURTH_BEE_ROW_LEVEL = 60      # 4th bee row level
+FLEET_TWELVE_WIDE_HORNET_LEVEL = 70  # 12-wide hornet row level
+FLEET_SEVENTH_BOSS_LEVEL = 80        # 7th boss level
+FLEET_FIFTH_BEE_ROW_LEVEL = 90       # 5th bee row level
+FLEET_EIGHTH_BOSS_LEVEL = 100        # 8th boss level
+FLEET_FOURTH_HORNET_ROW_LEVEL = 110  # 4th hornet row level
+FLEET_NINTH_BOSS_LEVEL = 120         # 9th boss level
+FLEET_TENTH_BOSS_LEVEL = 140         # 10th boss level
+FLEET_ELEVENTH_BOSS_LEVEL = 160      # 11th boss level
+FLEET_TWELFTH_BOSS_LEVEL = 180       # 12th boss level
+
 # Streak scoring
 STREAK_MAX = 100
 
@@ -317,13 +324,13 @@ def fleet_composition(level: int) -> list:
     bee_rows = 2
     bee_width = 10
 
-    if L >= FLEET_TERRA_ROW_LEVEL:
+    if L >= FLEET_THIRD_HORNET_ROW_LEVEL:
         terra_rows = 3
 
     if L >= FLEET_FIFTH_BOSS_LEVEL:
         n_bosses = 5
 
-    if L >= WIDEN_TERRA_ROWS_LEVEL:
+    if L >= FLEET_TEN_WIDE_HORNET_LEVEL:
         terra_width = 10
         bee_width = FORMATION_COLS  # bees fill the row
 
@@ -336,7 +343,7 @@ def fleet_composition(level: int) -> list:
     if L >= FLEET_FOURTH_BEE_ROW_LEVEL:
         bee_rows = 4
 
-    if L >= SECOND_WIDEN_TERRA_ROWS_LEVEL:
+    if L >= FLEET_TWELVE_WIDE_HORNET_LEVEL:
         terra_width = FORMATION_COLS
 
     if L >= FLEET_SEVENTH_BOSS_LEVEL:
@@ -348,7 +355,7 @@ def fleet_composition(level: int) -> list:
     if L >= FLEET_EIGHTH_BOSS_LEVEL:
         n_bosses = 8
 
-    if L >= FLEET_SECOND_TERRA_ROW_LEVEL:
+    if L >= FLEET_FOURTH_HORNET_ROW_LEVEL:
         terra_rows = 4
 
     if L >= FLEET_NINTH_BOSS_LEVEL:
