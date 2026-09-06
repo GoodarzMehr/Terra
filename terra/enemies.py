@@ -41,7 +41,7 @@ class Enemy:
         Create an enemy of the given type in its formation slot.
 
         Args:
-            etype: enemy type ('bee', 'terra', or 'boss').
+            etype: enemy type ('bee', 'hornet', or 'boss').
             slot_index: index of this enemy's formation slot.
             slot: (col, row) of the formation slot.
             level: 1-based level (bosses gain extra hits over time).
@@ -89,7 +89,7 @@ class Enemy:
         if self.etype == 'boss':
             return 34
 
-        if self.etype == 'terra':
+        if self.etype == 'hornet':
             return 24
 
         return 20
@@ -112,7 +112,7 @@ class Enemy:
         Returns:
             The score value.
         '''
-        base = {'bee': C.SCORE_BEE, 'terra': C.SCORE_TERRA, 'boss': C.SCORE_BOSS}[self.etype]
+        base = {'bee': C.SCORE_BEE, 'hornet': C.SCORE_HORNET, 'boss': C.SCORE_BOSS}[self.etype]
 
         if diving:
             base *= C.DIVE_BONUS_MULTIPLIER
@@ -121,7 +121,7 @@ class Enemy:
 
     def color(self) -> tuple:
         '''Primary sprite color for this enemy type.'''
-        return {'bee': C.BEE_COLOR, 'terra': C.HORNET_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
+        return {'bee': C.BEE_COLOR, 'hornet': C.HORNET_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
 
     def slot_world(self, wobble_x: float) -> tuple:
         '''
@@ -618,7 +618,7 @@ class Fleet:
         sp = self.params['enemy_bullet_speed']
         homing = (e.etype == 'boss'
                   and random.random() < self.params['boss_homing_chance']) or (
-            e.etype == 'terra'
+            e.etype == 'hornet'
             and random.random() < self.params['terra_homing_chance'])
         self.bullets.append(EnemyBullet(e.x, e.y + 10, dx / d * sp, dy / d * sp, homing))
 
@@ -694,7 +694,7 @@ class Fleet:
             effects.shake(C.BOSS_SHAKE_MAGNITUDE, C.BOSS_SHAKE_DURATION)
             effects.flash(color, 0.12)
             sound.play('explosion_boss')
-        elif e.etype == 'terra':
+        elif e.etype == 'hornet':
             effects.explosion(e.x, e.y, color, 26, 250, 0.6, 3)
             effects.shake(C.SHAKE_MAGNITUDE, C.SHAKE_DURATION)
             sound.play('explosion_small')
@@ -748,7 +748,7 @@ class Fleet:
 
         if e.etype == 'bee':
             self._draw_bee(surf, x, y, col, flap)
-        elif e.etype == 'terra':
+        elif e.etype == 'hornet':
             self._draw_terra(surf, x, y, col, flap)
         else:
             self._draw_boss(surf, x, y, col, flap, e.split, e.elite)

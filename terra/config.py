@@ -212,34 +212,38 @@ FLEET_TENTH_BOSS_LEVEL = 140         # 10th boss level
 FLEET_ELEVENTH_BOSS_LEVEL = 160      # 11th boss level
 FLEET_TWELFTH_BOSS_LEVEL = 180       # 12th boss level
 
-# Streak scoring
+# Scoring streak
 STREAK_MAX = 100
 
 # Power-ups
-POWERUP_DROP_CHANCE = 0.128
-POWERUP_BOSS_DROP = 1.0
-POWERUP_FALL_SPEED = 120.0
-POWERUP_W, POWERUP_H = 26, 26
-TRIPLE_DURATION = 8.0
-RAPID_DURATION = 8.0
+POWERUP_DROP_CHANCE = 0.128   # chance of a power-up dropping when an enemy is
+                              # destroyed
+POWERUP_BOSS_DROP = 1.0       # chance of a power-up dropping when a boss is
+                              # destroyed
+POWERUP_FALL_SPEED = 120.0    # speed of falling power-ups (px/s)
+POWERUP_W, POWERUP_H = 26, 26 # power-up size (px)
+TRIPLE_DURATION = 8.0         # duration of triple-shot power-up (seconds)
+RAPID_DURATION = 8.0          # duration of rapid-fire power-up (seconds)
 
-# Bomb: one-shot fan of 15 shots in a 60-degree forward cone
-BOMB_FAN_SHOTS = 20
-BOMB_FAN_ANGLE = math.radians(60.0)
-BOMB_BULLET_SPEED = 800.0
-BOMB_START = 0
+# Bomb
+BOMB_FAN_SHOTS = 30                 # number of shots in a bomb fan
+BOMB_FAN_ANGLE = math.radians(60.0) # angle of bomb fan (radians)
+BOMB_BULLET_SPEED = 800.0           # speed of bomb bullets (px/s)
+BOMB_START = 3                      # initial number of bombs
 
 # Score values
-SCORE_BEE = 5
-SCORE_TERRA = 10
-SCORE_BOSS = 40
-DIVE_BONUS_MULTIPLIER = 2
+SCORE_BEE = 5             # score for destroying a bee
+SCORE_HORNET = 10         # score for destroying a hornet
+SCORE_BOSS = 40           # score for destroying a boss
+DIVE_BONUS_MULTIPLIER = 2 # multiplier on score for destroying a diving enemy
 
 # Screen shake
-SHAKE_MAGNITUDE = 6.0
-SHAKE_DURATION = 0.25
-BOSS_SHAKE_MAGNITUDE = 14.0
-BOSS_SHAKE_DURATION = 0.5
+SHAKE_MAGNITUDE = 6.0       # magnitude of screen shake (px)
+SHAKE_DURATION = 0.25       # duration of screen shake (seconds)
+BOSS_SHAKE_MAGNITUDE = 14.0 # magnitude of screen shake when a boss is hit
+                            # (px)
+BOSS_SHAKE_DURATION = 0.5   # duration of screen shake when a boss is hit
+                            # (seconds)
 
 HIGHSCORE_FILE = 'highscores.json'
 
@@ -306,33 +310,35 @@ def level_params(level: int) -> dict:
 
 
 def fleet_composition(level: int) -> list:
-    '''Build the (type, column, row) formation slots for a level's fleet.
+    '''
+    Build the (type, column, row) formation slots for a level's enemy fleet.
 
-    Level 1 is the classic 40-enemy layout (8-wide terra rows); later
-    levels widen the terra rows, add more rows, and add extra bosses.
+    Level 1 is the classic 40-enemy layout (8-wide hornet rows); later levels
+    widen the hornet and bee rows, add more rows, and add extra bosses.
 
     Args:
-        level: 1-based level number.
+        level: level number.
 
     Returns:
-        List of (etype, col, row) tuples (max 76 enemies).
+        List of (etype, col, row) tuples.
     '''
     L = max(1, level)
+
     n_bosses = 4
-    terra_rows = 2
-    terra_width = 8   # classic layout is 8-wide; widens to 10 later
+    hornet_rows = 2
+    hornet_width = 8
     bee_rows = 2
     bee_width = 10
 
     if L >= FLEET_THIRD_HORNET_ROW_LEVEL:
-        terra_rows = 3
+        hornet_rows = 3
 
     if L >= FLEET_FIFTH_BOSS_LEVEL:
         n_bosses = 5
 
     if L >= FLEET_TEN_WIDE_HORNET_LEVEL:
-        terra_width = 10
-        bee_width = FORMATION_COLS  # bees fill the row
+        hornet_width = 10
+        bee_width = FORMATION_COLS
 
     if L >= FLEET_THIRD_BEE_ROW_LEVEL:
         bee_rows = 3
@@ -344,7 +350,7 @@ def fleet_composition(level: int) -> list:
         bee_rows = 4
 
     if L >= FLEET_TWELVE_WIDE_HORNET_LEVEL:
-        terra_width = FORMATION_COLS
+        hornet_width = FORMATION_COLS
 
     if L >= FLEET_SEVENTH_BOSS_LEVEL:
         n_bosses = 7
@@ -356,7 +362,7 @@ def fleet_composition(level: int) -> list:
         n_bosses = 8
 
     if L >= FLEET_FOURTH_HORNET_ROW_LEVEL:
-        terra_rows = 4
+        hornet_rows = 4
 
     if L >= FLEET_NINTH_BOSS_LEVEL:
         n_bosses = 9
@@ -378,17 +384,17 @@ def fleet_composition(level: int) -> list:
     for i in range(n_bosses):
         slots.append(('boss', first + i, 0))
 
-    # TERRA rows (centered)
-    g_first = (FORMATION_COLS - terra_width) // 2
+    # Hornet rows (centered)
+    h_first = (FORMATION_COLS - hornet_width) // 2
 
-    for row in range(1, terra_rows + 1):
-        for col in range(g_first, g_first + terra_width):
-            slots.append(('terra', col, row))
+    for row in range(1, hornet_rows + 1):
+        for col in range(h_first, h_first + hornet_width):
+            slots.append(('hornet', col, row))
 
     b_first = (FORMATION_COLS - bee_width) // 2
 
-    # Bee rows (10 wide)
-    for row in range(terra_rows + 1, terra_rows + bee_rows + 1):
+    # Bee rows (centered)
+    for row in range(hornet_rows + 1, hornet_rows + bee_rows + 1):
         for col in range(b_first, b_first + bee_width):
             slots.append(('bee', col, row))
 
@@ -396,8 +402,19 @@ def fleet_composition(level: int) -> list:
 
 
 def slot_to_world(slot_index: int, slot: tuple, wobble_x: float) -> tuple:
-    '''Convert a formation slot to world coordinates with the wobble offset.'''
-    etype, col, row = slot
+    '''
+    Convert a formation slot to world coordinates with the wobble offset.
+    
+    Args:
+        slot_index: index of the formation slot.
+        slot: (etype, col, row) of the formation slot.
+        wobble_x: current horizontal wobble offset (px).
+
+    Returns:
+        Tuple of (x, y) world coordinates.
+    '''
+    _, col, row = slot
+
     x = FORMATION_CX + (col - (FORMATION_COLS - 1) / 2.0) * FORMATION_SLOT_W + wobble_x
     y = FORMATION_TOP + row * FORMATION_SLOT_H
 
