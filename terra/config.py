@@ -82,7 +82,6 @@ FORMATION_SLOT_W = 34.0 # enemy formation slot width (px)
 FORMATION_SLOT_H = 34.0 # enemy formation slot height (px)
 FORMATION_COLS = 12     # number of columns in the formation
 
-FORMATION_W = FORMATION_COLS * FORMATION_SLOT_W # enemy formation width (px)
 FORMATION_CX = WIDTH / 2.0                      # enemy formation center (px)
 
 # Base refers to the value at level 1; growth is per-level increase; max/min
@@ -284,29 +283,60 @@ def level_params(level: int) -> dict:
             ENEMY_BULLET_MAX_SPEED
         ),
         'dive_speed': clamp(DIVE_SPEED_BASE + DIVE_SPEED_GROWTH * (L - 1), DIVE_SPEED_BASE, DIVE_SPEED_MAX),
-        'max_divers': min(MAX_DIVERS_CAP, 1 + (L - 1) // MAX_DIVERS_GROWTH),
+        'max_divers': clamp(1 + (L - 1) // MAX_DIVERS_GROWTH, 1, MAX_DIVERS_CAP),
         'entry_delay': clamp(ENTRY_DELAY_BASE - ENTRY_DELAY_DROP * (L - 1), ENTRY_DELAY_MIN, 9),
         'entry_path_time': clamp(ENTRY_PATH_TIME_BASE - ENTRY_PATH_TIME_DROP * (L - 1), ENTRY_PATH_TIME_MIN, 9),
-        'formation_wobble_amp': WOBBLE_AMP_BASE + min(WOBBLE_AMP_MAX - WOBBLE_AMP_BASE, WOBBLE_AMP_GROWTH * (L - 1)),
-        'formation_wobble_speed': min(WOBBLE_SPEED_MAX, WOBBLE_SPEED_BASE + WOBBLE_SPEED_GROWTH * (L - 1)),
-        'dive_turn': min(DIVE_TURN_MAX, DIVE_TURN_BASE + DIVE_TURN_GROWTH * (L - 1)),
-        'dive_spread': min(DIVE_SPREAD_MAX, DIVE_SPREAD_BASE + DIVE_SPREAD_GROWTH * (L - 1)),
-        'dive_pincer_chance': min(
-            DIVE_PINCER_CHANCE_MAX,
-            DIVE_PINCER_CHANCE_BASE + DIVE_PINCER_CHANCE_GROWTH * (L - 1)
+        'formation_wobble_amp': clamp(WOBBLE_AMP_BASE + WOBBLE_AMP_GROWTH * (L - 1), WOBBLE_AMP_BASE, WOBBLE_AMP_MAX),
+        'formation_wobble_speed': clamp(
+            WOBBLE_SPEED_BASE + WOBBLE_SPEED_GROWTH * (L - 1),
+            WOBBLE_SPEED_BASE,
+            WOBBLE_SPEED_MAX
         ),
-        'formation_burst_chance': min(
-            FORMATION_BURST_CHANCE_MAX,
-            FORMATION_BURST_CHANCE_BASE + FORMATION_BURST_CHANCE_GROWTH * (L - 1)
+        'dive_turn': clamp(DIVE_TURN_BASE + DIVE_TURN_GROWTH * (L - 1), DIVE_TURN_BASE, DIVE_TURN_MAX),
+        'dive_spread': clamp(DIVE_SPREAD_BASE + DIVE_SPREAD_GROWTH * (L - 1), DIVE_SPREAD_BASE, DIVE_SPREAD_MAX),
+        'dive_pincer_chance': clamp(
+            DIVE_PINCER_CHANCE_BASE + DIVE_PINCER_CHANCE_GROWTH * (L - 1),
+            DIVE_PINCER_CHANCE_BASE,
+            DIVE_PINCER_CHANCE_MAX
         ),
-        'formation_burst_shooters': min(FORMATION_BURST_MAX, 1 + (L - 1) // FORMATION_BURST_STEP),
-        'terra_homing_chance': min(HORNET_HOMING_CHANCE_MAX, HORNET_HOMING_CHANCE_GROWTH * (L - 1)),
-        'spread_chance': min(SPREAD_CHANCE_MAX, SPREAD_CHANCE_GROWTH * (L - 1)),
-        'boss_spread_chance': min(BOSS_SPREAD_CHANCE_MAX, BOSS_SPREAD_CHANCE_GROWTH * (L - 1)),
-        'boss_homing_chance': min(BOSS_HOMING_MAX, BOSS_HOMING_BASE + BOSS_HOMING_GROWTH * (L - 1)),
+        'formation_burst_chance': clamp(
+            FORMATION_BURST_CHANCE_BASE + FORMATION_BURST_CHANCE_GROWTH * (L - 1),
+            FORMATION_BURST_CHANCE_BASE,
+            FORMATION_BURST_CHANCE_MAX
+        ),
+        'formation_burst_shooters': clamp(1 + (L - 1) // FORMATION_BURST_STEP, 1, FORMATION_BURST_MAX),
+        'terra_homing_chance': clamp(HORNET_HOMING_CHANCE_GROWTH * (L - 1), 0.0, HORNET_HOMING_CHANCE_MAX),
+        'spread_chance': clamp(SPREAD_CHANCE_GROWTH * (L - 1), 0.0, SPREAD_CHANCE_MAX),
+        'boss_spread_chance': clamp(BOSS_SPREAD_CHANCE_GROWTH * (L - 1), 0.0, BOSS_SPREAD_CHANCE_MAX),
+        'boss_homing_chance': clamp(
+            BOSS_HOMING_BASE + BOSS_HOMING_GROWTH * (L - 1),
+            BOSS_HOMING_BASE,
+            BOSS_HOMING_MAX
+        ),
     }
 
     return p
+
+
+# Fleet scaling milestones: (level threshold, changes to apply at that level).
+# Baseline (level 1) is 4 bosses, 2 hornet rows (8-wide), 2 bee rows (10-wide).
+_FLEET_MILESTONES = [
+    (FLEET_THIRD_HORNET_ROW_LEVEL, {'hornet_rows': 3}),
+    (FLEET_FIFTH_BOSS_LEVEL, {'n_bosses': 5}),
+    (FLEET_TEN_WIDE_HORNET_LEVEL, {'hornet_width': 10, 'bee_width': FORMATION_COLS}),
+    (FLEET_THIRD_BEE_ROW_LEVEL, {'bee_rows': 3}),
+    (FLEET_SIXTH_BOSS_LEVEL, {'n_bosses': 6}),
+    (FLEET_FOURTH_BEE_ROW_LEVEL, {'bee_rows': 4}),
+    (FLEET_TWELVE_WIDE_HORNET_LEVEL, {'hornet_width': FORMATION_COLS}),
+    (FLEET_SEVENTH_BOSS_LEVEL, {'n_bosses': 7}),
+    (FLEET_FIFTH_BEE_ROW_LEVEL, {'bee_rows': 5}),
+    (FLEET_EIGHTH_BOSS_LEVEL, {'n_bosses': 8}),
+    (FLEET_FOURTH_HORNET_ROW_LEVEL, {'hornet_rows': 4}),
+    (FLEET_NINTH_BOSS_LEVEL, {'n_bosses': 9}),
+    (FLEET_TENTH_BOSS_LEVEL, {'n_bosses': 10}),
+    (FLEET_ELEVENTH_BOSS_LEVEL, {'n_bosses': 11}),
+    (FLEET_TWELFTH_BOSS_LEVEL, {'n_bosses': 12}),
+]
 
 
 def fleet_composition(level: int) -> list:
@@ -324,57 +354,23 @@ def fleet_composition(level: int) -> list:
     '''
     L = max(1, level)
 
-    n_bosses = 4
-    hornet_rows = 2
-    hornet_width = 8
-    bee_rows = 2
-    bee_width = 10
+    fleet = {
+        'n_bosses': 4,
+        'hornet_rows': 2,
+        'hornet_width': 8,
+        'bee_rows': 2,
+        'bee_width': 10,
+    }
 
-    if L >= FLEET_THIRD_HORNET_ROW_LEVEL:
-        hornet_rows = 3
+    for threshold, changes in _FLEET_MILESTONES:
+        if L >= threshold:
+            fleet.update(changes)
 
-    if L >= FLEET_FIFTH_BOSS_LEVEL:
-        n_bosses = 5
-
-    if L >= FLEET_TEN_WIDE_HORNET_LEVEL:
-        hornet_width = 10
-        bee_width = FORMATION_COLS
-
-    if L >= FLEET_THIRD_BEE_ROW_LEVEL:
-        bee_rows = 3
-
-    if L >= FLEET_SIXTH_BOSS_LEVEL:
-        n_bosses = 6
-
-    if L >= FLEET_FOURTH_BEE_ROW_LEVEL:
-        bee_rows = 4
-
-    if L >= FLEET_TWELVE_WIDE_HORNET_LEVEL:
-        hornet_width = FORMATION_COLS
-
-    if L >= FLEET_SEVENTH_BOSS_LEVEL:
-        n_bosses = 7
-
-    if L >= FLEET_FIFTH_BEE_ROW_LEVEL:
-        bee_rows = 5
-
-    if L >= FLEET_EIGHTH_BOSS_LEVEL:
-        n_bosses = 8
-
-    if L >= FLEET_FOURTH_HORNET_ROW_LEVEL:
-        hornet_rows = 4
-
-    if L >= FLEET_NINTH_BOSS_LEVEL:
-        n_bosses = 9
-
-    if L >= FLEET_TENTH_BOSS_LEVEL:
-        n_bosses = 10
-
-    if L >= FLEET_ELEVENTH_BOSS_LEVEL:
-        n_bosses = 11
-
-    if L >= FLEET_TWELFTH_BOSS_LEVEL:
-        n_bosses = 12
+    n_bosses = fleet['n_bosses']
+    hornet_rows = fleet['hornet_rows']
+    hornet_width = fleet['hornet_width']
+    bee_rows = fleet['bee_rows']
+    bee_width = fleet['bee_width']
 
     slots = []
 
@@ -401,12 +397,11 @@ def fleet_composition(level: int) -> list:
     return slots
 
 
-def slot_to_world(slot_index: int, slot: tuple, wobble_x: float) -> tuple:
+def slot_to_world(slot: tuple, wobble_x: float) -> tuple:
     '''
     Convert a formation slot to world coordinates with the wobble offset.
     
     Args:
-        slot_index: index of the formation slot.
         slot: (etype, col, row) of the formation slot.
         wobble_x: current horizontal wobble offset (px).
 

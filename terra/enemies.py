@@ -133,7 +133,7 @@ class Enemy:
         Returns:
             (x, y) world position.
         '''
-        return C.slot_to_world(self.slot_index, self.slot, wobble_x)
+        return C.slot_to_world(self.slot, wobble_x)
 
     def _begin_entry(self, wobble_x: float, params: dict) -> None:
         '''
