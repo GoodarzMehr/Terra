@@ -1,19 +1,24 @@
-'''Enemy fleet: types, formation, entry choreography, and dive-bomb AI.
+# Terra
+# Copyright (C) 2026  Goodarz Mehr
 
-This is the heart of the game. A :class:`Fleet` owns 40 enemies and drives:
-  * the whole-formation side-to-side wobble,
-  * the staggered fly-in (choreographed entry) at the start of each level,
-  * periodic dive-bomb waves (V-formations and single runs) that curve
-    toward the player and fire on the way down,
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
-  * re-entry of divers back into the formation, and
-  * the enemy bullet list.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
 
-'''
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+'''Enemy fleet: types, formation, entry choreography, and attack patterns.'''
 
 import math
 import random
-
 import pygame
 
 from . import config as C
@@ -28,31 +33,54 @@ DEAD = 'dead'
 
 
 class Enemy:
+    '''
+    A single enemy ship in the fleet, with its own state machine and
+    entry/dive behavior.
+
+    Args:
+        etype: enemy type ('bee', 'hornet', or 'boss').
+        slot_index: index of this enemy's formation slot.
+        slot: (col, row) of the formation slot.
+        level: level number.
+    '''
     __slots__ = (
-        'etype', 'slot_index', 'slot', 'state', 'x', 'y', 'vx', 'vy',
-        'anim_t', 'entry_t', 'entry_start', 'entry_duration', 'entry_started',
-        'dive_delay', 'dive_target_offset', 'dive_fire_t', 'dive_aim_t',
-        'dive_target', 'hits', 'split', 'elite', 'p0', 'p1', 'spiral_side', 'flash',
+        'etype',
+        'slot_index',
+        'slot',
+        'state',
+        'x',
+        'y',
+        'vx',
+        'vy',
+        'anim_t',
+        'entry_t',
+        'entry_start',
+        'entry_duration',
+        'entry_started',
+        'dive_delay',
+        'dive_target_offset',
+        'dive_fire_t',
+        'dive_aim_t',
+        'dive_target',
+        'hits',
+        'split',
+        'elite',
+        'p0',
+        'p1',
+        'spiral_side',
+        'flash',
     )
 
-    def __init__(self, etype: str, slot_index: int, slot: tuple,
-                 level: int = 1):
-        '''
-        Create an enemy of the given type in its formation slot.
-
-        Args:
-            etype: enemy type ('bee', 'hornet', or 'boss').
-            slot_index: index of this enemy's formation slot.
-            slot: (col, row) of the formation slot.
-            level: 1-based level (bosses gain extra hits over time).
-        '''
+    def __init__(self, etype: str, slot_index: int, slot: tuple, level: int = 1):
         self.etype = etype
         self.slot_index = slot_index
         self.slot = slot
+
         self.state = ENTRY
 
         self.x = 0.0
         self.y = -60.0
+
         self.vx = 0.0
         self.vy = 0.0
 
@@ -69,23 +97,31 @@ class Enemy:
         self.dive_aim_t = 0.0
         self.dive_target = None
 
-        # elite bosses keep gaining hit points as the levels climb
+        # Elite bosses keep gaining hit points as the level increases, up to a
+        # cap.
         if etype == 'boss':
-            self.hits = min(C.ELITE_BOSS_MAX_HITS,
-                            2 + max(1, level) // C.ELITE_BOSS_STEP)
+            self.hits = min(C.ELITE_BOSS_MAX_HITS, 2 + max(1, level) // C.ELITE_BOSS_STEP)
         else:
             self.hits = 1
+
         self.elite = etype == 'boss' and self.hits > 2
+
         self.split = False
 
         self.p0 = (0.0, 0.0)
         self.p1 = (0.0, 0.0)
 
         self.spiral_side = 1 if random.random() < 0.5 else -1
+
         self.flash = 0.0
 
     def size(self) -> int:
-        '''Side length in px of this enemy's hitbox.'''
+        '''
+        Get the enemy's hitbox size.
+        
+        Returns:
+            Side length of this enemy's hitbox (px).
+        '''
         if self.etype == 'boss':
             return 34
 
@@ -95,7 +131,12 @@ class Enemy:
         return 20
 
     def rect(self) -> pygame.Rect:
-        '''Current screen-space hitbox rect.'''
+        '''
+        Get the current screen-space hitbox rectangle.
+
+        Returns:
+            The hitbox rectangle.
+        '''
         s = self.size()
         w = s + 6
         h = s
@@ -104,7 +145,7 @@ class Enemy:
 
     def score(self, diving: bool) -> int:
         '''
-        Points awarded for this kill.
+        Get the score awarded for killing this enemy.
 
         Args:
             diving: double the base score when the enemy is diving.
@@ -120,15 +161,20 @@ class Enemy:
         return base
 
     def color(self) -> tuple:
-        '''Primary sprite color for this enemy type.'''
+        '''
+        Get the primary sprite color for this enemy type.
+
+        Returns:
+            The primary sprite color.
+        '''
         return {'bee': C.BEE_COLOR, 'hornet': C.HORNET_COLOR, 'boss': C.BOSS_COLOR}[self.etype]
 
     def slot_world(self, wobble_x: float) -> tuple:
         '''
-        World-space position of this enemy's formation slot.
+        Get the world-space position of this enemy's formation slot.
 
         Args:
-            wobble_x: current formation wobble offset in px.
+            wobble_x: current formation wobble offset (px).
 
         Returns:
             (x, y) world position.
@@ -140,23 +186,26 @@ class Enemy:
         Start the curved entry flight toward the formation slot.
 
         Args:
-            wobble_x: current formation wobble offset in px.
-            params: level parameters dict from config.level_params.
+            wobble_x: current formation wobble offset (px).
+            params: level parameters.
         '''
         self.entry_started = True
         self.entry_duration = params['entry_path_time']
+
         side = self.spiral_side
+
         sx, sy = self.slot_world(wobble_x)
 
         if self.etype == 'boss':
             self.entry_duration = params['entry_path_time'] + 0.8
-            # off-screen start so the boss doesn't pop in at the corner
+
+            # Off-screen start so the boss doesn't pop in at the corner.
             self.p0 = (sx + side * random.uniform(140, 220), -70.0)
             self.p1 = (C.WIDTH / 2 + side * random.uniform(120, 300), random.uniform(40, 100))
 
             return
 
-        # quadratic bezier start points (alternate sides for a nice spread)
+        # Quadratic Bezier start points (alternate sides for a nice spread).
         self.p0 = (sx + side * random.uniform(120, 260), -50.0)
         self.p1 = (C.WIDTH / 2 + side * random.uniform(120, 320), random.uniform(60, 140))
 
@@ -165,11 +214,12 @@ class Enemy:
         Advance the entry flight; snap into formation when close.
 
         Args:
-            dt: frame delta in seconds.
-            wobble_x: current formation wobble offset in px.
+            dt: frame delta (seconds).
+            wobble_x: current formation wobble offset (px).
 
         Returns:
-            True once the enemy has joined the formation.
+            True once the enemy has joined the formation, False while still
+            flying in.
         '''
         if not self.entry_started:
             self.x, self.y = self.p0 if self.p0 else (self.x, -60.0)
@@ -177,23 +227,29 @@ class Enemy:
             return False
 
         self.entry_t += dt / self.entry_duration
+
         t = min(1.0, self.entry_t)
+
         tx, ty = self.slot_world(wobble_x)
 
         if self.etype == 'boss':
-            # spiral into the slot
+            # Spiral into the slot.
             ang = self.spiral_side * (3.5 - 3.5 * t) * math.pi
+
             rad = (1 - t) * 260.0
+
             self.x = tx + math.cos(ang) * rad
             self.y = ty + math.sin(ang) * rad * 0.6 - (1 - t) * 120.0
         else:
-            # quadratic bezier
+            # Quadratic Bezier.
             u = 1 - t
+
             self.x = u * u * self.p0[0] + 2 * u * t * self.p1[0] + t * t * tx
             self.y = u * u * self.p0[1] + 2 * u * t * self.p1[1] + t * t * ty
 
         if t >= 1.0:
             self.state = FORMATION
+
             self.x, self.y = tx, ty
 
             return True
@@ -533,10 +589,10 @@ class Fleet:
 
         if tgt is not None and tgt.alive and tgt.invuln <= 0:
             # lead the target so the dive meets it where it will be
-            dist = max(0.0, (C.HEIGHT - 60) - e.y)
-            t = dist / max(1.0, self.params['dive_speed'])
-            target_x = tgt.x + tgt.vx * t + e.dive_target_offset
-            target_y = C.HEIGHT - 60.0
+            dist = max(0.0, tgt.y - e.y)
+            t = min(dist / max(1.0, self.params['dive_speed']), 0.6)
+            target_x = tgt.x + C.clamp(tgt.vx * t, -150, 150) + e.dive_target_offset
+            target_y = tgt.y
         else:
             # no legal target (player dead or blinking): fly straight
             # down and exit the screen, then re-enter the formation
