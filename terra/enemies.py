@@ -258,19 +258,19 @@ class Enemy:
 
 
 class EnemyBullet:
+    '''
+    A bullet fired by an enemy.
+
+    Args:
+        x: spawn x in world (px).
+        y: spawn y in world (px).
+        vx: horizontal velocity (px/s).
+        vy: vertical velocity (px/s).
+        homing: steer toward the nearest player each frame.
+    '''
     __slots__ = ('x', 'y', 'vx', 'vy', 'alive', 'homing')
 
     def __init__(self, x: float, y: float, vx: float, vy: float, homing: bool = False):
-        '''
-        Create an enemy bullet.
-
-        Args:
-            x: spawn x in world px.
-            y: spawn y in world px.
-            vx: horizontal velocity in px/s.
-            vy: vertical velocity in px/s.
-            homing: steer toward the nearest player each frame.
-        '''
         self.x, self.y = x, y
         self.vx, self.vy = vx, vy
         self.alive = True
@@ -281,33 +281,41 @@ class EnemyBullet:
         Move the bullet, optionally homing toward the nearest player.
 
         Args:
-            dt: frame delta in seconds.
+            dt: frame delta (seconds).
             players: list of Player objects to home toward.
         '''
-        # only chase players that can actually be hit right now (a ship
-        # that just respawned blinks and is immune for a few seconds)
+        # Only chase players that can actually be hit (a player that just
+        # respawned is immune for a few seconds).
         if self.homing and players:
             vulnerable = [p for p in players if p.alive and p.invuln <= 0]
 
             if vulnerable:
                 tgt = random.choice(vulnerable)
+
                 dx, dy = tgt.x - self.x, tgt.y - self.y
+
                 d = math.hypot(dx, dy) or 1.0
                 sp = math.hypot(self.vx, self.vy)
+
                 self.vx += (dx / d - self.vx / sp) * 1.6 * dt
                 self.vy += (dy / d - self.vy / sp) * 1.6 * dt
+
                 self.vx, self.vy = _rescale(self.vx, self.vy, sp)
 
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-        if self.y > C.HEIGHT + 20 or self.x < -20 or self.x > C.WIDTH + 20 or self.y < -40:
+        if self.y > C.HEIGHT + 20 or self.x < -20 or self.x > C.WIDTH + 20 or self.y < -20:
             self.alive = False
 
     def rect(self) -> pygame.Rect:
-        '''Current screen-space hitbox rect.'''
-        return pygame.Rect(int(self.x - 3), int(self.y - C.ENEMY_BULLET_H / 2),
-                           6, C.ENEMY_BULLET_H)
+        '''
+        Get the current screen-space hitbox rectangle.
+
+        Returns:
+            The hitbox rectangle.
+        '''
+        return pygame.Rect(int(self.x - 3), int(self.y - C.ENEMY_BULLET_H / 2), 6, C.ENEMY_BULLET_H)
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
         '''
@@ -315,10 +323,11 @@ class EnemyBullet:
 
         Args:
             surf: surface to draw on.
-            ox: screen-space camera offset x in px.
-            oy: screen-space camera offset y in px.
+            ox: screen-space camera offset x (px).
+            oy: screen-space camera offset y (px).
         '''
         x, y = int(self.x + ox), int(self.y + oy)
+
         pygame.draw.circle(surf, C.ORANGE, (x, y), 4)
         pygame.draw.rect(surf, C.YELLOW, (x - 1, y - 6, 3, 12))
 
@@ -328,9 +337,9 @@ def _rescale(vx: float, vy: float, sp: float) -> tuple:
     Scale a velocity vector to the given speed.
 
     Args:
-        vx: current x velocity in px/s.
-        vy: current y velocity in px/s.
-        sp: target speed in px/s.
+        vx: current x velocity (px/s).
+        vy: current y velocity (px/s).
+        sp: target speed (px/s).
 
     Returns:
         (vx, vy) rescaled velocity.
@@ -341,14 +350,17 @@ def _rescale(vx: float, vy: float, sp: float) -> tuple:
 
 
 class Fleet:
+    '''Create an empty fleet (no enemies or bullets).'''
     def __init__(self):
-        '''Create an empty fleet (no enemies or bullets).'''
         self.enemies = []
         self.bullets = []
+
         self.wobble_t = 0.0
         self.fleet_time = 0.0
         self.dive_timer = 2.0
+
         self.params = C.level_params(1)
+
         self.level = 1
 
     def setup(self, level: int) -> None:
@@ -356,73 +368,106 @@ class Fleet:
         Populate the fleet for a level.
 
         Args:
-            level: 1-based level number.
+            level: level number.
         '''
         self.level = level
+
         self.params = C.level_params(level)
+
         self.wobble_t = 0.0
         self.fleet_time = 0.0
-        self.bullets.clear()
         self.dive_timer = 1.6
 
+        self.bullets.clear()
+
         self.enemies = []
+
         slots = C.fleet_composition(level)
+
         n_bosses = sum(1 for s in slots if s[0] == 'boss')
 
         for i, (etype, col, row) in enumerate(slots):
             e = Enemy(etype, i, (etype, col, row), level)
-            self._assign_entry(e, i, level, n_bosses)
+
+            self._assign_entry(e, i, n_bosses)
+
             self.enemies.append(e)
 
-    def _assign_entry(self, e: Enemy, i: int, level: int, n_bosses: int) -> None:
+    def _assign_entry(self, e: Enemy, i: int, n_bosses: int) -> None:
         '''
         Schedule an enemy's entry flight with a staggered delay.
 
         Args:
-            e: the Enemy to schedule.
+            e: the enemy to schedule.
             i: index of the enemy in the formation.
-            level: 1-based level number (tightens the stagger).
-            n_bosses: number of bosses in this fleet (entry stagger).
+            n_bosses: number of bosses in this fleet.
         '''
         delay = self.params['entry_delay']
 
         if e.etype == 'boss':
-            # bosses enter first, one after another (count scales with level)
+            # Bosses enter first, one after another.
             e.entry_start = 0.5 + (i % max(1, n_bosses)) * 0.28
         else:
-            # group the non-boss enemies into waves of 6
+            # Group the non-boss enemies into waves of 6.
             non_boss_index = i - n_bosses
+
             group = non_boss_index // 6
+
             e.entry_start = 0.9 + group * delay + random.uniform(0.0, 0.12)
 
-        # precompute an off-screen start position so it doesn't pop in
-        # at (0,0)
+        # Precompute an off-screen start position so the enemy doesn't pop in
+        # at (0,0).
         e._begin_entry(0.0, self.params)
+
         e.entry_started = False  # wait until its entry_start time
+
         e.x, e.y = e.p0
 
     @property
     def wobble_x(self) -> float:
-        '''Current horizontal formation offset in px (wobble + slow drift).'''
-        wobble = (math.sin(self.wobble_t * self.params['formation_wobble_speed'])
-                  * self.params['formation_wobble_amp'])
-        # slow drift keeps the formation mobile even when wobble is small
+        '''
+        Get the current horizontal formation offset (wobble + slow drift)
+        (px).
+        
+        Returns:
+            Current horizontal formation offset (px).
+        '''
+        wobble = math.sin(self.wobble_t * self.params['formation_wobble_speed']) * self.params['formation_wobble_amp']
+
+        # Slow drift keeps the formation mobile even when wobble is small.
         drift = math.sin(self.fleet_time * C.FORMATION_DRIFT_SPEED) * C.FORMATION_DRIFT_AMP
+
         return wobble + drift
 
     def alive_enemies(self) -> list:
-        '''Enemies that are not dead or off-screen.'''
+        '''
+        Get the list of enemies that are not dead or off-screen.
+        
+        Returns:
+            List of alive enemies.
+        '''
         return [e for e in self.enemies if e.state != DEAD]
 
     def all_in_formation(self) -> bool:
-        '''True when every surviving enemy is in its formation slot.'''
+        '''
+        Check if all surviving enemies are in their formation slots.
+        
+        Returns:
+            True if all surviving enemies are in their formation slots, False
+                otherwise.
+        '''
         # DEAD enemies count as 'settled' — a kill during the entry fly-in
         # must not stall the entry->active transition (it used to lock the
         # level in 'entry' forever, so no further waves ever started).
         return all(e.state in (FORMATION, DIVE, REENTER, DEAD) for e in self.enemies)
 
     def diving_count(self) -> int:
-        '''Number of enemies currently dive-bombing.'''
+        '''
+        Number of enemies currently dive-bombing.
+        
+        Returns:
+            Number of enemies currently dive-bombing.
+        '''
         return sum(1 for e in self.enemies if e.state == DIVE)
 
     def scatter_divers(self) -> None:
