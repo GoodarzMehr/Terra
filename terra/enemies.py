@@ -456,14 +456,13 @@ class Fleet:
             True if all surviving enemies are in their formation slots, False
                 otherwise.
         '''
-        # DEAD enemies count as 'settled' — a kill during the entry fly-in
-        # must not stall the entry->active transition (it used to lock the
-        # level in 'entry' forever, so no further waves ever started).
+        # Dead enemies count as 'settled'. A kill during the entry fly-in must
+        # not stall the entry->active transition.
         return all(e.state in (FORMATION, DIVE, REENTER, DEAD) for e in self.enemies)
 
     def diving_count(self) -> int:
         '''
-        Number of enemies currently dive-bombing.
+        Get the number of enemies currently dive-bombing.
         
         Returns:
             Number of enemies currently dive-bombing.
@@ -471,31 +470,37 @@ class Fleet:
         return sum(1 for e in self.enemies if e.state == DIVE)
 
     def scatter_divers(self) -> None:
-        '''Send every dive-bomber back to its slot (a player was destroyed).'''
+        '''Send every dive-bomber back to its slot (player was destroyed).'''
         for e in self.enemies:
             if e.state == DIVE:
                 e.state = REENTER
+
                 e.entry_t = 0.0
+
                 e.dive_target = None
-                sx, _sy = e.slot_world(0)
+
+                sx, _ = e.slot_world(0)
+                
                 e.p0 = (e.x, e.y)
                 e.p1 = (sx + e.spiral_side * 160, max(60.0, e.y - 200.0))
 
     def update(self, dt: float, players: list, effects: 'Effects', sound: 'SoundBank') -> None:
         '''
-        Advance the fleet: entries, wobble, dive waves, and bullets.
+        Advance the fleet state machine, including entry, formation, and dive
+        waves.
 
         Args:
-            dt: frame delta in seconds.
+            dt: frame delta (seconds).
             players: list of Player objects.
             effects: Effects instance for explosions.
             sound: SoundBank instance.
         '''
         self.wobble_t += dt
         self.fleet_time += dt
+
         wx = self.wobble_x
 
-        # --- entry ---
+        # Entry
         for e in self.enemies:
             if e.state == ENTRY:
                 if not e.entry_started and self.fleet_time >= e.entry_start:
@@ -503,43 +508,43 @@ class Fleet:
 
                 e.update_entry(dt, wx)
 
-        # --- formation & dive ---
+        # Formation and dive
         for e in self.enemies:
             if e.state == FORMATION:
                 e.x, e.y = e.slot_world(wx)
+
                 e.anim_t += dt * 6
             elif e.state == DIVE:
-                self._update_dive(e, dt, players, effects, sound)
+                self._update_dive(e, dt, players, sound)
             elif e.state == REENTER:
                 self._update_reenter(e, dt, wx)
 
-        # --- dive wave scheduling ---
-        # no new dive waves while every player is dead or still blinking
-        # (immune): the timer holds at zero so the first wave fires the
-        # moment a player becomes vulnerable again
+        # No new dive waves while all players are dead or still immune. The
+        # timer holds at zero so the first wave fires the moment a player
+        # becomes vulnerable again
         vulnerable = [p for p in players if p.alive and p.invuln <= 0]
 
         if self.all_in_formation():
             self.dive_timer -= dt
 
             if self.dive_timer <= 0 and vulnerable:
-                self._start_dive_wave(players, sound)
+                self._start_dive_wave(sound)
+
                 self.dive_timer = self.params['dive_interval'] * random.uniform(0.75, 1.25)
             elif self.dive_timer <= 0:
                 self.dive_timer = 0.0
 
-        # --- enemy bullets ---
+        # Enemy bullets
         for b in self.bullets:
             b.update(dt, players)
 
         self.bullets = [b for b in self.bullets if b.alive]
 
-    def _start_dive_wave(self, players: list, sound: 'SoundBank') -> None:
+    def _start_dive_wave(self, sound: 'SoundBank') -> None:
         '''
-        Pick up to the dive cap of formation enemies to dive-bomb.
+        Start a new dive wave, picking a random shape and number of enemies.
 
         Args:
-            players: list of Player objects to target.
             sound: SoundBank instance for dive sounds.
         '''
         if self.diving_count() >= self.params['max_divers']:
@@ -550,131 +555,154 @@ class Fleet:
         if not candidates:
             return
 
-        # Decide wave shape: a V of 3-5, a pincer V from the wings,
-        # or a single/double run
+        # Decide wave shape: a V of 3-8, a pincer V from the wings, or a
+        # single/double run
         r = random.random()
 
         if r < self.params['dive_pincer_chance']:
             shape = 'pincer'
-            n = random.randint(3, 5)
+
+            n = random.randint(3, 8)
         elif r < self.params['dive_pincer_chance'] + 0.45:
             shape = 'v'
-            n = random.randint(3, 5)
+
+            n = random.randint(3, 8)
         else:
             shape = 'run'
-            n = random.randint(1, 2)
+
+            n = random.randint(1, 8)
 
         n = max(1, min(n, len(candidates)))
 
         if shape == 'pincer':
             left = [e for e in candidates if e.slot[1] < C.FORMATION_COLS / 2]
             right = [e for e in candidates if e.slot[1] >= C.FORMATION_COLS / 2]
+
             half = (n + 1) // 2
+
             wing = random.choice([left, right])
+
             other = right if wing is left else left
+
             if len(wing) < half or len(other) < n - half:
                 wave = random.sample(candidates, n)
             else:
-                wave = (random.sample(wing, half)
-                        + random.sample(other, n - half))
+                wave = (random.sample(wing, half) + random.sample(other, n - half))
         else:
             wave = random.sample(candidates, n)
 
         n = max(1, min(len(wave), self.params['max_divers']))
+
         wave = wave[:n]
+
         mid = len(wave) // 2
+
         spread = self.params['dive_spread']
 
         for i, e in enumerate(wave):
             e.state = DIVE
+
             e.dive_delay = 0.0 if shape == 'run' else abs(i - mid) * 0.12
+
             e.dive_target_offset = (i - mid) * spread if shape != 'run' else 0.0
+
             e.dive_aim_t = 0.0
+
             e.vx = 0.0
             e.vy = 60.0
+
             e.dive_fire_t = random.uniform(0.3, 0.9)
 
         sound.play('whoosh', 0.5)
 
-    def _update_dive(self, e: Enemy, dt: float, players: list,
-                     effects: 'Effects', sound: 'SoundBank') -> None:
+    def _update_dive(self, e: Enemy, dt: float, players: list, sound: 'SoundBank') -> None:
         '''
-        Advance a dive-bomber; boss splits and may fire while diving.
+        Advance a dive-bomber, steering toward its target and firing.
 
         Args:
-            e: the diving Enemy.
-            dt: frame delta in seconds.
+            e: the diving enemy.
+            dt: frame delta (seconds).
             players: list of Player objects.
-            effects: Effects instance for explosions.
             sound: SoundBank instance.
         '''
-
         if e.dive_delay > 0:
             e.dive_delay -= dt
+
             e.y += e.vy * dt * 0.4
 
             return
 
-        # only target players that can actually be hit right now (a ship
-        # that just respawned blinks and is immune for a few seconds); a
-        # diver with no legal target flies straight through
+        # Only target players that can actually be hit (are not dead or
+        # immune). A diver with no valid target flies straight through.
         vulnerable = [p for p in players if p.alive and p.invuln <= 0]
 
-        # re-aim on a cadence (with jitter) so the dive keeps a committed
-        # curve instead of re-locking every frame; a target that is dead
-        # or has just become immune (blinking) is dropped immediately
+        # Re-aim on a cadence (with jitter) so the dive keeps a committed
+        # curve instead of re-locking every frame. A target that has died or
+        # is immune is dropped immediately.
         e.dive_aim_t -= dt
 
-        if (e.dive_aim_t <= 0 or e.dive_target is None
-                or not (e.dive_target.alive and e.dive_target.invuln <= 0)):
+        if (e.dive_aim_t <= 0 or e.dive_target is None or not (e.dive_target.alive and e.dive_target.invuln <= 0)):
             e.dive_target = random.choice(vulnerable) if vulnerable else None
             e.dive_aim_t = random.uniform(C.DIVE_REAIM_MIN, C.DIVE_REAIM_MAX)
 
         tgt = e.dive_target
 
         if tgt is not None and tgt.alive and tgt.invuln <= 0:
-            # lead the target so the dive meets it where it will be
+            # Lead the target so the dive meets it where it will be.
             dist = max(0.0, tgt.y - e.y)
+
             t = min(dist / max(1.0, self.params['dive_speed']), 0.6)
+
             target_x = tgt.x + C.clamp(tgt.vx * t, -150, 150) + e.dive_target_offset
             target_y = tgt.y
         else:
-            # no legal target (player dead or blinking): fly straight
-            # down and exit the screen, then re-enter the formation
+            # No valid target (player dead or immune), fly straight down and
+            # exit the screen, then re-enter the formation.
             target_x = e.x
             target_y = C.HEIGHT + 80.0
 
         dx, dy = target_x - e.x, target_y - e.y
+
         d = math.hypot(dx, dy) or 1.0
+
         sp = self.params['dive_speed']
+
         desired_vx, desired_vy = dx / d * sp, dy / d * sp
 
-        # steering toward desired velocity -> smooth curve
+        # Smoothly steer toward the desired velocity (so the dive is a curve,
+        # not a straight line).
         turn = self.params['dive_turn']
+
         e.vx += (desired_vx - e.vx) * min(1.0, turn * dt)
         e.vy += (desired_vy - e.vy) * min(1.0, turn * dt)
 
-        # bees wobble
+        # Bees wobble.
         if e.etype == 'bee':
             e.x += math.sin(self.fleet_time * 8 + e.anim_t) * 40 * dt
 
         e.x += e.vx * dt
         e.y += e.vy * dt
+
         e.anim_t += dt * 10
 
-        # fire while diving
+        # Fire while diving.
         e.dive_fire_t -= dt
 
         if e.dive_fire_t <= 0 and vulnerable and e.y < C.HEIGHT - 120:
             self._fire_aimed(e, players, sound)
+
             e.dive_fire_t = random.uniform(0.5, 1.1)
 
-        # exited off screen -> re-enter formation
+        # Re-enter formation after exitting offscreen.
         if e.y > C.HEIGHT + 30 or e.x < -40 or e.x > C.WIDTH + 40:
             e.state = REENTER
+
             e.entry_t = 0.0
+
             side = e.spiral_side
-            sx, sy = e.slot_world(0)
+
+            sx, _ = e.slot_world(0)
+
             e.p0 = (sx + side * 160, -50)
             e.p1 = (C.WIDTH / 2 + side * 200, 90)
 
