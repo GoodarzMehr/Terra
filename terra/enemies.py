@@ -194,7 +194,7 @@ class Enemy:
 
         side = self.spiral_side
 
-        sx, sy = self.slot_world(wobble_x)
+        sx, _ = self.slot_world(wobble_x)
 
         if self.etype == 'boss':
             self.entry_duration = params['entry_path_time'] + 0.8
@@ -398,8 +398,8 @@ class Fleet:
         Schedule an enemy's entry flight with a staggered delay.
 
         Args:
-            e: the enemy to schedule.
-            i: index of the enemy in the formation.
+            e: the Enemy to schedule.
+            i: index of the Enemy in the formation.
             n_bosses: number of bosses in this fleet.
         '''
         delay = self.params['entry_delay']
@@ -484,7 +484,7 @@ class Fleet:
                 e.p0 = (e.x, e.y)
                 e.p1 = (sx + e.spiral_side * 160, max(60.0, e.y - 200.0))
 
-    def update(self, dt: float, players: list, effects: 'Effects', sound: 'SoundBank') -> None:
+    def update(self, dt: float, players: list, sound: 'SoundBank') -> None:
         '''
         Advance the fleet state machine, including entry, formation, and dive
         waves.
@@ -492,7 +492,6 @@ class Fleet:
         Args:
             dt: frame delta (seconds).
             players: list of Player objects.
-            effects: Effects instance for explosions.
             sound: SoundBank instance.
         '''
         self.wobble_t += dt
@@ -515,7 +514,7 @@ class Fleet:
 
                 e.anim_t += dt * 6
             elif e.state == DIVE:
-                self._update_dive(e, dt, players, sound)
+                self._update_dive(e, dt, players)
             elif e.state == REENTER:
                 self._update_reenter(e, dt, wx)
 
@@ -615,12 +614,12 @@ class Fleet:
 
         sound.play('whoosh', 0.5)
 
-    def _update_dive(self, e: Enemy, dt: float, players: list, sound: 'SoundBank') -> None:
+    def _update_dive(self, e: Enemy, dt: float, players: list) -> None:
         '''
         Advance a dive-bomber, steering toward its target and firing.
 
         Args:
-            e: the diving enemy.
+            e: the diving Enemy.
             dt: frame delta (seconds).
             players: list of Player objects.
             sound: SoundBank instance.
@@ -689,7 +688,7 @@ class Fleet:
         e.dive_fire_t -= dt
 
         if e.dive_fire_t <= 0 and vulnerable and e.y < C.HEIGHT - 120:
-            self._fire_aimed(e, players, sound)
+            self._fire_aimed(e, players)
 
             e.dive_fire_t = random.uniform(0.5, 1.1)
 
@@ -712,29 +711,35 @@ class Fleet:
 
         Args:
             e: the re-entering Enemy.
-            dt: frame delta in seconds.
-            wx: current formation wobble offset in px.
+            dt: frame delta (seconds).
+            wx: current formation wobble offset (px).
         '''
         e.entry_t += dt / (self.params['entry_path_time'] * 0.8)
+
         t = min(1.0, e.entry_t)
+
         u = 1 - t
+
         tx, ty = e.slot_world(wx)
+
         e.x = u * u * e.p0[0] + 2 * u * t * e.p1[0] + t * t * tx
         e.y = u * u * e.p0[1] + 2 * u * t * e.p1[1] + t * t * ty
+
         e.anim_t += dt * 8
 
         if t >= 1.0:
             e.state = FORMATION
+
             e.x, e.y = tx, ty
 
-    def _fire_aimed(self, e: Enemy, players: list, sound: 'SoundBank') -> None:
+    def _fire_aimed(self, e: Enemy, players: list) -> None:
         '''
-        Fire an aimed shot; terras may home, and shots may fan out 3-way.
+        Fire an aimed shot. Hornets and bosses may fire homing bullets, and
+        all enemies have a chance to fire a 3-way spread.
 
         Args:
             e: the firing Enemy.
             players: list of Player objects to aim at.
-            sound: SoundBank instance for the shot sound.
         '''
         alive = [p for p in players if p.alive]
 
@@ -742,47 +747,54 @@ class Fleet:
             return
 
         tgt = random.choice(alive)
+
         dx, dy = tgt.x - e.x, tgt.y - e.y
+
         d = math.hypot(dx, dy) or 1.0
+
         sp = self.params['enemy_bullet_speed']
-        homing = (e.etype == 'boss'
-                  and random.random() < self.params['boss_homing_chance']) or (
-            e.etype == 'hornet'
-            and random.random() < self.params['terra_homing_chance'])
+
+        homing = (e.etype == 'boss' and random.random() < self.params['boss_homing_chance']) \
+            or (e.etype == 'hornet' and random.random() < self.params['terra_homing_chance'])
+
         self.bullets.append(EnemyBullet(e.x, e.y + 10, dx / d * sp, dy / d * sp, homing))
 
-        # 3-way spread: two extra bullets fanned around the aim direction;
-        # bosses use their own (later-ramping) chance, others the base one
-        chance = (self.params['boss_spread_chance'] if e.etype == 'boss'
-                  else self.params['spread_chance'])
+        # 3-way spread: two extra bullets fanned around the aim direction.
+        chance = (self.params['boss_spread_chance'] if e.etype == 'boss' else self.params['spread_chance'])
 
         if random.random() < chance:
             ang = math.atan2(dy, dx)
 
             for off in (-0.22, 0.22):
                 a = ang + off
-                self.bullets.append(EnemyBullet(
-                    e.x, e.y + 10, math.cos(a) * sp, math.sin(a) * sp, False))
 
-    def formation_fire(self, players: list, sound: 'SoundBank', dt: float) -> None:
-        '''Formation fire: a stray aimed shot, or a coordinated row burst.'''
+                self.bullets.append(EnemyBullet(e.x, e.y + 10, math.cos(a) * sp, math.sin(a) * sp, False))
+
+    def formation_fire(self, players: list, dt: float) -> None:
+        '''
+        Fire a shot from a formation enemy.
+
+        Args:
+            players: list of Player objects to aim at.
+            sound: SoundBank instance for the shot sound.
+            dt: time since last frame.
+        '''
         if random.random() < self.params['enemy_fire_chance'] * dt * C.FORMATION_FIRE_RATE:
             cands = [e for e in self.enemies if e.state == FORMATION]
 
             if cands:
                 if random.random() < self.params['formation_burst_chance']:
-                    self._row_burst(cands, players, sound)
+                    self._row_burst(cands, players)
                 else:
-                    self._fire_aimed(random.choice(cands), players, sound)
+                    self._fire_aimed(random.choice(cands), players)
 
-    def _row_burst(self, cands: list, players: list, sound: 'SoundBank') -> None:
+    def _row_burst(self, cands: list, players: list) -> None:
         '''
         Fire a coordinated volley from a single formation row.
 
         Args:
             cands: formation enemies eligible to fire.
             players: list of Player objects to aim at.
-            sound: SoundBank instance for the shot sound.
         '''
         rows: dict = {}
 
@@ -790,46 +802,66 @@ class Fleet:
             rows.setdefault(e.slot[2], []).append(e)
 
         row = random.choice(list(rows.values()))
+
         row.sort(key=lambda e: e.slot[1])
+
         n = min(len(row), self.params['formation_burst_shooters'])
+
         shooters = random.sample(row, n)
 
         for e in shooters:
-            self._fire_aimed(e, players, sound)
+            self._fire_aimed(e, players)
 
     def hit_enemy(self, e: Enemy, effects: 'Effects', sound: 'SoundBank') -> int:
-        '''Apply a hit to an enemy. Returns points scored (0 if still alive).'''
+        '''
+        Apply a hit to an enemy.
+        
+        Args:
+            e: the Enemy to hit.
+            effects: Effects instance for visual effects.
+            sound: SoundBank instance for explosion sounds.
+        
+        Returns:
+            The score value for the hit (0 if not destroyed).
+        '''
         if e.state == DEAD:
             return 0
 
         diving = e.state == DIVE  # capture before any state mutation
+
         e.hits -= 1
 
         if e.hits > 0:
-            # boss first hit -> split
+            # Split boss after first hit.
             e.split = True
             e.flash = 0.15
+
             effects.spark(e.x, e.y, e.color(), 14, 180, 0.4)
+
             sound.play('explosion_small')
 
             return 0
 
-        # destroyed
+        # Destroyed.
         e.state = DEAD
+
         color = e.color()
 
         if e.etype == 'boss':
             effects.explosion(e.x, e.y, C.WHITE, 20, 200, 0.6, 3)
             effects.shake(C.BOSS_SHAKE_MAGNITUDE, C.BOSS_SHAKE_DURATION)
             effects.flash(color, 0.12)
+
             sound.play('explosion_boss')
         elif e.etype == 'hornet':
             effects.explosion(e.x, e.y, color, 26, 250, 0.6, 3)
             effects.shake(C.SHAKE_MAGNITUDE, C.SHAKE_DURATION)
+
             sound.play('explosion_small')
         else:
             effects.explosion(e.x, e.y, color, 18, 200, 0.5, 3)
             effects.spark(e.x, e.y, C.WHITE, 8, 140, 0.3)
+
             sound.play('explosion_small')
 
         return e.score(diving)
@@ -840,8 +872,8 @@ class Fleet:
 
         Args:
             surf: surface to draw on.
-            ox: screen-space camera offset x in px.
-            oy: screen-space camera offset y in px.
+            ox: screen-space camera offset x (px).
+            oy: screen-space camera offset y (px).
         '''
         for e in self.enemies:
             if e.state == DEAD:
@@ -862,116 +894,130 @@ class Fleet:
         Args:
             surf: surface to draw on.
             e: the Enemy to draw.
-            ox: screen-space camera offset x in px.
-            oy: screen-space camera offset y in px.
+            ox: screen-space camera offset x (px).
+            oy: screen-space camera offset y (px).
         '''
         x, y = int(e.x + ox), int(e.y + oy)
 
         if e.flash > 0:
             e.flash -= 0.016
+
+            # Flash the enemy white when hit, then fade back to normal.
             col = C.WHITE
         else:
             col = e.color()
 
-        flap = math.sin(e.anim_t) * 0.5 + 0.5  # 0..1 wing flap
+        flap = math.sin(e.anim_t) * 0.5 + 0.5
 
         if e.etype == 'bee':
             self._draw_bee(surf, x, y, col, flap)
         elif e.etype == 'hornet':
-            self._draw_terra(surf, x, y, col, flap)
+            self._draw_hornet(surf, x, y, col, flap)
         else:
             self._draw_boss(surf, x, y, col, flap, e.split, e.elite)
 
     def _draw_bee(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
         '''
-        Draw a bee sprite (wings flap with the flap phase).
+        Draw a bee (wings flap with the flap phase).
 
         Args:
             surf: surface to draw on.
-            x: screen-space center x in px.
-            y: screen-space center y in px.
+            x: screen-space center x (px).
+            y: screen-space center y (px).
             col: body color.
             flap: wing flap phase in [0, 1].
         '''
-        # wings
+        # Draw the wings.
         wing = int(6 + 5 * flap)
+
         pygame.draw.ellipse(surf, (200, 220, 255), (x - 12, y - 6 - wing, 9, wing + 6))
         pygame.draw.ellipse(surf, (200, 220, 255), (x + 3, y - 6 - wing, 9, wing + 6))
 
-        # body
+        # Draw the body.
         pygame.draw.ellipse(surf, col, (x - 6, y - 8, 12, 18))
 
-        # stripes
+        # Draw the stinger.
         pygame.draw.line(surf, C.DARK_RED, (x - 6, y - 2), (x + 6, y - 2), 2)
         pygame.draw.line(surf, C.DARK_RED, (x - 5, y + 3), (x + 5, y + 3), 2)
 
-        # eyes
+        # Draw the eyes.
         pygame.draw.circle(surf, C.WHITE, (x - 3, y - 6), 1)
         pygame.draw.circle(surf, C.WHITE, (x + 3, y - 6), 1)
 
-    def _draw_terra(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
+    def _draw_hornet(self, surf: pygame.Surface, x: int, y: int, col: tuple, flap: float) -> None:
         '''
-        Draw a terra sprite (wings flap with the flap phase).
+        Draw a hornet (wings flap with the flap phase).
 
         Args:
             surf: surface to draw on.
-            x: screen-space center x in px.
-            y: screen-space center y in px.
+            x: screen-space center x (px).
+            y: screen-space center y (px).
             col: body color.
             flap: wing flap phase in [0, 1].
         '''
-        # side fins (flap)
+        # Draw the wings.
         fin = int(4 + 6 * flap)
+
         pygame.draw.polygon(surf, C.BLUE, [(x - 8, y), (x - 8 - fin, y - 6), (x - 8 - fin, y + 4)])
         pygame.draw.polygon(surf, C.BLUE, [(x + 8, y), (x + 8 + fin, y - 6), (x + 8 + fin, y + 4)])
 
-        # body
+        # Draw the body.
         pygame.draw.ellipse(surf, col, (x - 8, y - 10, 16, 20))
 
-        # head
+        # Draw the stinger.
         pygame.draw.circle(surf, C.WHITE, (x, y - 8), 4)
 
-        # tail
+        # Draw the tail.
         pygame.draw.polygon(surf, col, [(x - 4, y + 8), (x, y + 14), (x + 4, y + 8)])
 
-        # eyes
+        # Draw the eyes.
         pygame.draw.circle(surf, C.RED, (x - 2, y - 9), 1)
         pygame.draw.circle(surf, C.RED, (x + 2, y - 9), 1)
 
-    def _draw_boss(self, surf: pygame.Surface, x: int, y: int, col: tuple,
-                   flap: float, split: bool, elite: bool = False) -> None:
+    def _draw_boss(
+        self,
+        surf: pygame.Surface,
+        x: int,
+        y: int,
+        col: tuple,
+        flap: float,
+        split: bool,
+        elite: bool = False
+    ) -> None:
         '''
-        Draw a boss sprite (wings flap; split state shown in red).
+        Draw a boss (wings flap; split state shown in red).
 
         Args:
             surf: surface to draw on.
-            x: screen-space center x in px.
-            y: screen-space center y in px.
+            x: screen-space center x (px).
+            y: screen-space center y (px).
             col: body color.
             flap: wing flap phase in [0, 1].
             split: boss has split and is flashing red.
             elite: multi-hit boss, tinted yellow.
         '''
-
         gap = 4 if split else 0
+
         body = C.YELLOW if elite else col
 
-        # two halves
+        # Draw the two halves.
         for sgn in (-1, 1):
             hx = x + sgn * (4 + gap)
-            # claw/wing
+
+            # Draw the claw/wings.
             wing = int(5 + 5 * flap)
-            pygame.draw.ellipse(surf, C.PINK, (hx - 8 * sgn - (4 if sgn < 0 else 0),
-                                               y - 4 - wing, 8, wing + 8))
-            # body half
+
+            pygame.draw.ellipse(surf, C.PINK, (hx - 8 * sgn - (4 if sgn < 0 else 0), y - 4 - wing, 8, wing + 8))
+
+            # Draw the body.
             pygame.draw.ellipse(surf, body, (hx - 6, y - 12, 12, 24))
             pygame.draw.ellipse(surf, C.DARK_RED, (hx - 4, y - 8, 8, 16))
 
-        # central face
+        # Draw the face.
         pygame.draw.circle(surf, C.WHITE, (x, y - 6), 4)
         pygame.draw.circle(surf, C.YELLOW, (x - 2, y - 6), 1)
         pygame.draw.circle(surf, C.YELLOW, (x + 2, y - 6), 1)
 
-        # mandibles
+        # Draw the mandibles.
         pygame.draw.line(surf, body, (x - 3, y + 8), (x - 6, y + 14), 2)
         pygame.draw.line(surf, body, (x + 3, y + 8), (x + 6, y + 14), 2)

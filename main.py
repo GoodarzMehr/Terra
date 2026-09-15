@@ -334,10 +334,10 @@ class Game:
         # 'intro' no enemies are alive, but in-flight enemy bullets must
         # keep falling (and cull off-screen) instead of freezing mid-air
         # between waves.
-        self.fleet.update(dt, self.players, self.effects, self.sound)
+        self.fleet.update(dt, self.players, self.sound)
 
         if phase == 'active':
-            self.fleet.formation_fire(self.players, self.sound, dt)
+            self.fleet.formation_fire(self.players, dt)
 
         d1, d2 = self._input_dirs()
 
