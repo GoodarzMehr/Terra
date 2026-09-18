@@ -222,7 +222,7 @@ class Enemy:
             flying in.
         '''
         if not self.entry_started:
-            self.x, self.y = self.p0 if self.p0 else (self.x, -60.0)
+            self.x, self.y = self.p0
 
             return False
 
@@ -414,10 +414,6 @@ class Fleet:
             group = non_boss_index // 6
 
             e.entry_start = 0.9 + group * delay + random.uniform(0.0, 0.12)
-
-        # Precompute an off-screen start position so the enemy doesn't pop in
-        # at (0,0).
-        e._begin_entry(0.0, self.params)
 
         e.entry_started = False  # wait until its entry_start time
 

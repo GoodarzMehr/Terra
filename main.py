@@ -311,7 +311,7 @@ class Game:
             return
 
         if self.state == INTRO:
-            if self.state_time >= 2.2:
+            if self.state_time >= 2.4:
                 self.state = PLAYING
                 self.state_time = 0.0
 
@@ -327,8 +327,7 @@ class Game:
             return
 
         # --- playing ---
-        self.levels.update(dt, self.fleet, self.sound)
-        phase = self.levels.phase
+        phase = self.levels.update(dt, self.fleet, self.sound)
 
         # Keep the fleet updating in every phase. During 'clear' and
         # 'intro' no enemies are alive, but in-flight enemy bullets must
