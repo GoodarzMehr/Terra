@@ -131,7 +131,7 @@ class Game:
 
     def start_game(self) -> None:
         '''Start a new game for the selected number of players.'''
-        self.players = [Player(0)] + ([Player(1)] if self.mode == 2 else [])
+        self.players = [Player(0, oneP=self.mode == 1)] + ([Player(1, oneP=False)] if self.mode == 2 else [])
         self.fleet = Fleet()
         self.powerups.reset()
         self.effects = Effects()

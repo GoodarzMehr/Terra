@@ -90,16 +90,16 @@ FORMATION_CX = WIDTH / 2.0                      # enemy formation center (px)
 ENEMY_BULLET_SPEED_BASE = 300.0        # base enemy bullet speed (px/s)
 ENEMY_BULLET_SPEED_GROWTH = 6.0        # enemy bullet speed increase per level
                                        # (px/s)
-ENEMY_BULLET_MAX_SPEED = 600.0         # maximum enemy bullet speed (px/s)
+ENEMY_BULLET_MAX_SPEED = 900.0         # maximum enemy bullet speed (px/s)
 ENEMY_BULLET_W, ENEMY_BULLET_H = 5, 12 # enemy bullet size (px)
 
 DIVE_INTERVAL_BASE = 3.0  # base time between enemy dive waves (seconds)
 DIVE_INTERVAL_DROP = 0.05 # decrease in time between enemy dive waves per
                           # level (seconds)
-DIVE_INTERVAL_MIN = 0.6   # minimum time between enemy dive waves (seconds)
+DIVE_INTERVAL_MIN = 0.5   # minimum time between enemy dive waves (seconds)
 DIVE_SPEED_BASE = 200.0   # base enemy dive speed (px/s)
-DIVE_SPEED_GROWTH = 6.0   # increase in enemy dive speed per level (px/s)
-DIVE_SPEED_MAX = 500.0    # maximum enemy dive speed (px/s)
+DIVE_SPEED_GROWTH = 5.0   # increase in enemy dive speed per level (px/s)
+DIVE_SPEED_MAX = 800.0    # maximum enemy dive speed (px/s)
 FIRE_CHANCE_BASE = 0.16   # base chance of enemy firing a bullet
 FIRE_CHANCE_GROWTH = 0.02 # increase in chance of enemy firing a bullet per
                           # level
@@ -123,13 +123,13 @@ ENTRY_PATH_TIME_MIN = 1.0   # minimum time for an enemy to fly from off-screen
 
 # Formation wobble
 WOBBLE_AMP_BASE = 24.0     # base amplitude of enemy formation wobble (px)
-WOBBLE_AMP_GROWTH = 1.2    # increase in amplitude of enemy formation wobble
+WOBBLE_AMP_GROWTH = 1.0    # increase in amplitude of enemy formation wobble
                            # per level (px)
-WOBBLE_AMP_MAX = 88.0      # maximum amplitude of enemy formation wobble (px)
-WOBBLE_SPEED_BASE = 0.6    # base speed of enemy formation wobble (rad/s)
-WOBBLE_SPEED_GROWTH = 0.03 # increase in speed of enemy formation wobble per
+WOBBLE_AMP_MAX = 100.0      # maximum amplitude of enemy formation wobble (px)
+WOBBLE_SPEED_BASE = 0.4    # base speed of enemy formation wobble (rad/s)
+WOBBLE_SPEED_GROWTH = 0.04 # increase in speed of enemy formation wobble per
                            # level (rad/s)
-WOBBLE_SPEED_MAX = 2.4     # maximum speed of enemy formation wobble (rad/s)
+WOBBLE_SPEED_MAX = 3.2     # maximum speed of enemy formation wobble (rad/s)
 
 # Slow whole-formation drift (in addition to the wobble)
 FORMATION_DRIFT_AMP = 36.0  # amplitude of whole-formation drift (px)
@@ -140,13 +140,13 @@ DIVE_TURN_BASE = 2.4             # base turn rate (rad/s) for divers to turn
                                  # toward the player
 DIVE_TURN_GROWTH = 0.04          # increase in turn rate (rad/s) per level for
                                  # divers to turn toward the player
-DIVE_TURN_MAX = 4.0              # maximum turn rate (rad/s) for divers to
+DIVE_TURN_MAX = 7.2              # maximum turn rate (rad/s) for divers to
                                  # turn toward the player
 DIVE_SPREAD_BASE = 40.0          # base spread angle for divers to fan out
                                  # when diving (degrees)
 DIVE_SPREAD_GROWTH = 0.8         # increase in spread angle for divers to fan
                                  # out when diving per level (degrees)
-DIVE_SPREAD_MAX = 72.0           # maximum spread angle for divers to fan out
+DIVE_SPREAD_MAX = 104.0           # maximum spread angle for divers to fan out
                                  # when diving (degrees)
 DIVE_PINCER_CHANCE_BASE = 0.0    # base chance of a pincer dive
 DIVE_PINCER_CHANCE_GROWTH = 0.01 # increase in chance of a pincer dive per
@@ -164,16 +164,16 @@ FORMATION_BURST_CHANCE_BASE = 0.1    # base chance of a formation burst (shots
 FORMATION_BURST_CHANCE_GROWTH = 0.02 # increase in chance of a formation burst
                                      # per level
 FORMATION_BURST_CHANCE_MAX = 0.9     # maximum chance of a formation burst
-FORMATION_BURST_STEP = 50            # number of levels required to increase
+FORMATION_BURST_STEP = 40            # number of levels required to increase
                                      # the number of shooters in a formation
                                      # burst by 1
-FORMATION_BURST_MAX = 4              # maximum number of shooters in a
+FORMATION_BURST_MAX = 8              # maximum number of shooters in a
                                      # formation burst
 
 # Hornet characteristics
 HORNET_HOMING_CHANCE_GROWTH = 0.01   # increase in chance of hornet homing in
                                      # on the player per level
-HORNET_HOMING_CHANCE_MAX = 0.4       # maximum chance of hornet homing in on
+HORNET_HOMING_CHANCE_MAX = 0.6       # maximum chance of hornet homing in on
                                      # the player
 SPREAD_CHANCE_GROWTH = 0.01          # increase in chance of spread shot per
                                      # level
@@ -182,11 +182,11 @@ SPREAD_CHANCE_MAX = 0.5              # maximum chance of spread shot
 # Boss characteristics
 BOSS_SPREAD_CHANCE_GROWTH = 0.01 # increase in chance of boss spread shot per
                                  # level
-BOSS_SPREAD_CHANCE_MAX = 0.5     # maximum chance of boss spread shot
+BOSS_SPREAD_CHANCE_MAX = 0.8     # maximum chance of boss spread shot
 BOSS_HOMING_BASE = 0.1           # base chance of boss homing in on the player
 BOSS_HOMING_GROWTH = 0.02        # increase in chance of boss homing in on the
                                  # player per level
-BOSS_HOMING_MAX = 0.9            # maximum chance of boss homing in on the
+BOSS_HOMING_MAX = 1.0            # maximum chance of boss homing in on the
                                  # player
 
 # Elite boss characteristics

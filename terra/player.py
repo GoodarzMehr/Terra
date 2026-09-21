@@ -1,26 +1,41 @@
+# Terra
+# Copyright (C) 2026  Goodarz Mehr
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 '''The player ship and its bullets.'''
 
 import math
-
 import pygame
 
 from . import config as C
 
 
 class PlayerBullet:
+    '''
+    Player's bullet. Moves straight up or in a fan pattern for the bomb.
+    
+    Args:
+        x: spawn x in world-space (px).
+        y: spawn y in world-space (px).
+        vx: x velocity (px/s).
+        vy: y velocity (px/s).
+        owner: index of the firing player.
+    '''
     __slots__ = ('x', 'y', 'vx', 'vy', 'owner', 'alive')
 
     def __init__(self, x: float, y: float, vx: float, vy: float, owner: 'Player'):
-        '''
-        Create a player bullet.
-
-        Args:
-            x: spawn x in world px.
-            y: spawn y in world px.
-            vx: x velocity in px/s.
-            vy: y velocity in px/s.
-            owner: index of the firing player.
-        '''
         self.x, self.y = x, y
         self.vx, self.vy = vx, vy
         self.owner = owner
@@ -31,7 +46,7 @@ class PlayerBullet:
         Move the bullet.
 
         Args:
-            dt: frame delta in seconds.
+            dt: frame delta (seconds).
         '''
         self.x += self.vx * dt
         self.y += self.vy * dt
@@ -40,9 +55,13 @@ class PlayerBullet:
             self.alive = False
 
     def rect(self) -> pygame.Rect:
-        '''Current screen-space hitbox rect.'''
-        return pygame.Rect(int(self.x - C.BULLET_W / 2), int(self.y - C.BULLET_H / 2),
-                           C.BULLET_W, C.BULLET_H)
+        '''
+        Get the current screen-space hitbox rect.
+        
+        Returns:
+            The hitbox rectangle.
+        '''
+        return pygame.Rect(int(self.x - C.BULLET_W / 2), int(self.y - C.BULLET_H / 2), C.BULLET_W, C.BULLET_H)
 
     def draw(self, surf: pygame.Surface, ox: float, oy: float) -> None:
         '''
@@ -50,42 +69,46 @@ class PlayerBullet:
 
         Args:
             surf: surface to draw on.
-            ox: screen-space camera offset x in px.
-            oy: screen-space camera offset y in px.
+            ox: screen-space camera offset x (px).
+            oy: screen-space camera offset y (px).
         '''
         x, y = int(self.x + ox), int(self.y + oy)
 
-        # glow
+        # Glow.
         pygame.draw.circle(surf, (120, 200, 255), (x, y - 2), 5)
 
-        # core capsule
+        # Core capsule.
         pygame.draw.rect(surf, C.WHITE, (x - 1, y - C.BULLET_H // 2, 3, C.BULLET_H))
         pygame.draw.rect(surf, C.CYAN, (x - 2, y - C.BULLET_H // 2 + 3, 5, C.BULLET_H - 6))
 
 
 class Player:
-    def __init__(self, index: int):
-        '''
-        Create a player.
+    '''
+    Player ship. Can move, fire, and take damage.
+    
+    Args:
+        index: player index (0 for 1P/2P, 1 for 2P only).
+        oneP: True if this is a 1P game, False if it's a 2P game.
+    '''
+    def __init__(self, index: int, oneP: bool = True):
+        self.index = index # 0 = P1 (left), 1 = P2 (right)
+        self.oneP = oneP
 
-        Args:
-            index: player index (0 for 1P/2P, 1 for 2P only).
-        '''
-        self.index = index  # 0 = P1 (left), 1 = P2 (right)
-        self.x = C.WIDTH * (0.3 if index == 0 else 0.7)
+        self.x = C.WIDTH * (0.5 if oneP else 0.7 if index == 0 else 0.3)
         self.y = C.PLAYER_Y
-        self.vx = 0.0  # px/s, tracked for enemy lead-aiming
+
+        self.vx = 0.0
 
         self.lives = C.PLAYER_LIVES
         self.score = 0
-        self.streak = 0  # consecutive kills without being hit
+        self.streak = 0 # consecutive kills without being hit
         self.multiplier = 1
 
-        self.fire_cooldown = 0.0
         self.alive = True
+        self.fire_cooldown = 0.0
         self.respawn_timer = 0.0
         self.invuln = 0.0
-        self.spawn_anim = 0.0  # fly-in progress 0..1
+        self.spawn_anim = 0.0 # fly-in progress 0-1
 
         self.shield = False
         self.triple_t = 0.0
@@ -96,51 +119,79 @@ class Player:
 
     @property
     def multiplier_value(self) -> int:
-        '''Current streak multiplier (1-6).'''
+        '''
+        Get the current streak multiplier.
+
+        Returns:
+            The current streak multiplier.
+        '''
         return min(C.STREAK_MAX, 1 + self.streak // 2)
 
     def reset(self) -> None:
         '''Reset position, lives, and streak for a new game.'''
-        self.x = C.WIDTH * (0.3 if self.index == 0 else 0.7)
+        self.x = C.WIDTH * (0.5 if self.oneP else 0.7 if self.index == 0 else 0.3)
+
         self.vx = 0.0
+
         self.lives = C.PLAYER_LIVES
         self.score = 0
         self.streak = 0
-        self.fire_cooldown = 0.0
+
         self.alive = True
+        self.fire_cooldown = 0.0
         self.respawn_timer = 0.0
         self.invuln = 1.0
         self.spawn_anim = 1.0
+
         self.shield = False
         self.triple_t = 0.0
         self.rapid_t = 0.0
         self.bombs = C.BOMB_START
+
         self.bullets.clear()
 
     def hit(self, effects: 'Effects', sound: 'SoundBank') -> bool:
-        '''Player took a hit. Returns True if the player died.'''
+        '''
+        Handle the player being hit by an enemy or bullet.
+        
+        Args:
+            effects: Effects instance for explosions, shake, and flash.
+            sound: SoundBank instance for playing hit sounds.
+
+        Returns:
+            True if the player died, False otherwise.
+        '''
         if self.invuln > 0:
             return False
 
         if self.shield:
             self.shield = False
+
             effects.spark(self.x, self.y, C.CYAN, 18, 200, 0.4)
             effects.flash(C.CYAN, 0.1)
+
             sound.play('shield_hit')
+
             self.invuln = 1.0
 
             return False
 
-        # death
+        # Death.
         self.lives -= 1
         self.streak = 0
+
         self.bullets.clear()
+
         effects.explosion(self.x, self.y, C.GREEN, 40, 300, 0.8, 4)
         effects.explosion(self.x, self.y, C.WHITE, 16, 160, 0.5, 2)
+
         effects.shake(C.SHAKE_MAGNITUDE * 1.6, C.SHAKE_DURATION)
         effects.flash(C.RED, 0.15)
+
         sound.play('player_death')
+
         self.alive = False
+
         self.respawn_timer = C.PLAYER_RESPAWN_TIME
 
         return True
@@ -150,11 +201,11 @@ class Player:
         Move, auto-fire, and tick shield/respawn timers.
 
         Args:
-            dt: frame delta in seconds.
-            move_dir: horizontal direction (-1/0/1).
+            dt: frame delta (seconds).
+            move_dir: horizontal movement direction (-1/0/1).
             sound: SoundBank instance.
         '''
-        # timers
+        # Timers.
         if self.fire_cooldown > 0:
             self.fire_cooldown -= dt
 
@@ -175,23 +226,25 @@ class Player:
 
             return
 
-        # respawn fly-in
+        # Respawn fly-in.
         if self.spawn_anim < 1.0:
             self.spawn_anim = min(1.0, self.spawn_anim + dt / 0.5)
             self.invuln = max(self.invuln, 0.5)
 
             return  # no control during fly-in
 
-        # movement
+        # Movement.
         self.vx = move_dir * C.PLAYER_SPEED
+
         self.x += self.vx * dt
+
         self.x = C.clamp(self.x, C.PLAYER_W / 2 + 8, C.WIDTH - C.PLAYER_W / 2 - 8)
 
-        # auto-firing
+        # Auto-firing.
         if self.fire_cooldown <= 0:
             self._fire(sound)
 
-        # bullets
+        # Bullets.
         for b in self.bullets:
             b.update(dt)
 
@@ -199,10 +252,14 @@ class Player:
 
     def _respawn(self) -> None:
         '''Place the ship at its start position after a life is lost.'''
-        self.x = C.WIDTH * (0.3 if self.index == 0 else 0.7)
+        self.x = C.WIDTH * (0.5 if self.oneP else 0.7 if self.index == 0 else 0.3)
+
         self.alive = True
+
         self.spawn_anim = 0.0
+
         self.invuln = C.PLAYER_RESPAWN_INVULN
+
         self.bullets.clear()
 
     def _fire(self, sound: 'SoundBank') -> None:
@@ -213,6 +270,7 @@ class Player:
             sound: SoundBank instance for the shot sound.
         '''
         rapid = self.rapid_t > 0
+
         cooldown = C.PLAYER_RAPID_COOLDOWN if rapid else C.PLAYER_FIRE_COOLDOWN
 
         y = self.y - C.PLAYER_H / 2
@@ -224,11 +282,12 @@ class Player:
             self.bullets.append(PlayerBullet(self.x, y, 0.0, -C.BULLET_SPEED, self))
 
         sound.play('laser', 0.5)
+
         self.fire_cooldown = cooldown
 
     def bomb_fan(self, sound: 'SoundBank', effects: 'Effects') -> bool:
         '''
-        Fire the 15-shot bomb fan across a 60-degree forward cone.
+        Fire the multi-shot bomb fan across the forward cone.
 
         Args:
             sound: SoundBank instance for the blast sound.
@@ -244,13 +303,17 @@ class Player:
 
         for i in range(C.BOMB_FAN_SHOTS):
             t = i / (C.BOMB_FAN_SHOTS - 1)
+
             ang = math.radians(-90.0) + (t - 0.5) * C.BOMB_FAN_ANGLE
+
             vx = math.cos(ang) * C.BOMB_BULLET_SPEED
             vy = math.sin(ang) * C.BOMB_BULLET_SPEED
+
             self.bullets.append(PlayerBullet(self.x, self.y, vx, vy, self))
 
         effects.flash(C.WHITE, 0.08)
         effects.shake(C.SHAKE_MAGNITUDE, C.SHAKE_DURATION)
+
         sound.play('bomb', 1.0)
 
         return True
@@ -261,55 +324,45 @@ class Player:
 
         Args:
             surf: surface to draw on.
-            ox: screen-space camera offset x in px.
-            oy: screen-space camera offset y in px.
+            ox: screen-space camera offset x (px).
+            oy: screen-space camera offset y (px).
         '''
         if not self.alive:
             return
 
-        # blink while invulnerable
+        # Blink while invulnerable.
         if self.invuln > 0 and int(self.invuln * 12) % 2 == 0:
             return
 
-        # fly-in from below
+        # Fly-in from below.
         t = self.spawn_anim
-        y = C.HEIGHT + 20 + (self.y - (C.HEIGHT + 20)) * t
+
         x = self.x
+        y = C.HEIGHT + 20 + (self.y - (C.HEIGHT + 20)) * t
+
         px, py = int(x + ox), int(y + oy)
 
-        # shield bubble
+        # Shield bubble.
         if self.shield:
             pygame.draw.circle(surf, C.CYAN, (px, py), 24, 2)
             pygame.draw.circle(surf, (90, 220, 255, 40), (px, py), 22)
 
-        # --- ship (pointing up) ---
-        # wings
-        pygame.draw.polygon(surf, C.GREEN, [
-            (px, py - 15),
-            (px - 13, py + 10),
-            (px - 5, py + 6),
-        ])
-        pygame.draw.polygon(surf, C.GREEN, [
-            (px, py - 15),
-            (px + 13, py + 10),
-            (px + 5, py + 6),
-        ])
+        # Ship (pointing up).
+        # wings.
+        pygame.draw.polygon(surf, C.GREEN, [(px, py - 15), (px - 13, py + 10), (px - 5, py + 6)])
+        pygame.draw.polygon(surf, C.GREEN, [(px, py - 15), (px + 13, py + 10), (px + 5, py + 6)])
 
-        # fuselage
-        pygame.draw.polygon(surf, C.WHITE, [
-            (px, py - 16),
-            (px - 4, py + 8),
-            (px + 4, py + 8),
-        ])
+        # Fuselage.
+        pygame.draw.polygon(surf, C.WHITE, [(px, py - 16), (px - 4, py + 8), (px + 4, py + 8)])
 
-        # cockpit
+        # Cockpit.
         pygame.draw.circle(surf, C.CYAN, (px, py - 4), 3)
 
-        # engine glow
+        # Engine glow.
         pygame.draw.circle(surf, C.ORANGE, (px, py + 10), 3)
         pygame.draw.circle(surf, C.YELLOW, (px, py + 10), 2)
 
-        # active power-up pips under the ship
+        # Active power-up pips under the ship.
         pip_y = py + 18
 
         if self.triple_t > 0:
@@ -320,6 +373,3 @@ class Player:
 
         if self.shield:
             pygame.draw.circle(surf, C.CYAN, (px + 8, pip_y), 3)
-
-        if self.bombs > 0:
-            pygame.draw.circle(surf, C.ORANGE, (px + 16, pip_y), 3)
