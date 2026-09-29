@@ -100,7 +100,6 @@ class Game:
         self.state_time = 0.0
         self.selftest_kills = 0
         self._selftest_frames = 0
-        self._last_streak_sound = {}
 
     def _load_highscores(self) -> dict:
         '''
@@ -227,11 +226,6 @@ class Game:
                         if pts > 0:
                             p.score += pts * p.multiplier_value
                             p.streak += 1
-                            new_mult = p.multiplier_value
-
-                            if new_mult != self._last_streak_sound.get(p.index, 0):
-                                self.sound.play_streak(new_mult)
-                                self._last_streak_sound[p.index] = new_mult
 
                             self.effects.popup(
                                 e.x, e.y, str(pts * p.multiplier_value),
@@ -259,7 +253,6 @@ class Game:
                 if br.colliderect(pr):
                     b.alive = False
                     died = p.hit(self.effects, self.sound)
-                    self._last_streak_sound[p.index] = 0
 
                     if died:
                         self.fleet.scatter_divers()
@@ -282,7 +275,6 @@ class Game:
 
                 if er.colliderect(pr):
                     died = p.hit(self.effects, self.sound)
-                    self._last_streak_sound[p.index] = 0
                     pts = self.fleet.hit_enemy(e, self.effects, self.sound)
 
                     if pts > 0:

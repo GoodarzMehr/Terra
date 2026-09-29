@@ -853,7 +853,7 @@ class Fleet:
             effects.explosion(e.x, e.y, color, 26, 250, 0.6, 3)
             effects.shake(C.SHAKE_MAGNITUDE, C.SHAKE_DURATION)
 
-            sound.play('explosion_small')
+            sound.play('explosion_big')
         else:
             effects.explosion(e.x, e.y, color, 18, 200, 0.5, 3)
             effects.spark(e.x, e.y, C.WHITE, 8, 140, 0.3)

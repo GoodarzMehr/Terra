@@ -281,7 +281,7 @@ class Player:
         else:
             self.bullets.append(PlayerBullet(self.x, y, 0.0, -C.BULLET_SPEED, self))
 
-        sound.play('laser', 0.5)
+        # sound.play('laser', 0.5)
 
         self.fire_cooldown = cooldown
 
