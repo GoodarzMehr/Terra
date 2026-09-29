@@ -206,6 +206,21 @@ def _peak(x: np.ndarray, level: float = 0.85) -> np.ndarray:
     return x
 
 
+def _bandpass(x: np.ndarray, lo: float = 0.05, hi: float = 0.35) -> np.ndarray:
+    '''
+    Crude bandpass filter, difference of two one-pole lowpasses.
+
+    Args:
+        x: input samples.
+        lo: lower-cutoff alpha of the one-pole (1/s at 48 kHz).
+        hi: upper-cutoff alpha of the one-pole.
+
+    Returns:
+        Samples with energy concentrated between the two cutoffs.
+    '''
+    return _lowpass(x, hi) - _lowpass(x, lo)
+
+
 class SoundBank:
     '''Holds all synthesized sounds and provides playback methods.'''
     def __init__(self) -> None:
@@ -236,35 +251,97 @@ class SoundBank:
         try:
             s = self.sounds
 
-            # Laser pew: descending square sweep.
-            n = int(0.13 * SAMPLE_RATE)
+            # Laser shot: plasma bolt - zip, descending core, hiss tail.
+            n = int(0.18 * SAMPLE_RATE)
             
-            s['laser'] = _to_sound(_sweep(950, 250, n, wave='square') * _envelope(n, decay=22) * 0.35)
+            shot = np.zeros(n)
+            
+            # Discharge transient (the "zip").
+            m = int(0.008 * SAMPLE_RATE)
+            
+            shot[:m] += _noise(m) * _envelope(m, attack=0.0005, decay=300.0) * 0.9
+            
+            # Descending core: inharmonic partials, band-limited.
+            core = _sweep(1500, 500, n, wave='sine') + \
+                0.7 * _sweep(2350, 780, n, wave='sine') + \
+                    0.4 * _sweep(3100, 1050, n, wave='sine')
+            shot += _bandpass(core, 0.02, 0.5) * _envelope(n, decay=18.0) * 0.5
+            
+            # Breathy noise body.
+            shot += _bandpass(_noise(n), 0.15, 0.6) * _boom_env(n, 25.0, 10.0, 0.3) * 0.35
+            
+            # Low thump for weight.
+            shot += _sweep(120, 60, n, wave='sine') * _envelope(n, decay=14.0) * 0.2
+            
+            # Hiss tail: highpassed noise over the last 40 ms.
+            hn = int(0.04 * SAMPLE_RATE)
+            
+            nz = _noise(hn)
+            
+            shot[-hn:] += (nz - _lowpass(nz, 0.35)) * _envelope(hn, decay=50.0) * 0.25
+            
+            s['laser'] = _to_sound(_peak(shot, 0.55))
 
-            # Small explosion: filtered noise burst.
-            n = int(0.32 * SAMPLE_RATE)
+            # Small explosion: sharp crack over a short rumbling body.
+            n = int(0.45 * SAMPLE_RATE)
             
-            s['explosion_small'] = _to_sound(_lowpass(_noise(n), 0.35) * _envelope(n, decay=14) * 0.2)
+            boom = np.zeros(n)
 
-            # Big explosion: longer, deeper.
-            n = int(0.5 * SAMPLE_RATE)
+            # Crack transient.
+            m = int(0.02 * SAMPLE_RATE)
             
-            boom = _lowpass(_noise(n), 0.12) * _envelope(n, decay=8) + \
-                _sweep(160, 40, n, wave='sine') * _envelope(n, decay=7) * 0.5
-            
-            s['explosion_big'] = _to_sound(boom * 0.6)
+            boom[:m] += _noise(m) * _envelope(m, attack=0.001, decay=120.0) * 1.1
 
-            # Boss explosion: huge, layered noise blast with an initial crack.
-            n = int(0.9 * SAMPLE_RATE)
+            # Rumble body.
+            boom += _lowpass(_noise(n), 0.05) * _boom_env(n, 22.0, 7.0) * 0.55
+
+            # Sub-thump for weight.
+            boom += _sweep(80.0, 50.0, n, wave='sine') * _envelope(n, decay=10.0) * 0.25
+
+            # Short high sizzle (air displacement).
+            sn = int(0.07 * SAMPLE_RATE)
             
-            boom = _lowpass(_noise(n), 0.06) * _envelope(n, decay=4.5) + \
-                _sweep(90, 30, n, wave='sine') * _envelope(n, decay=5) * 0.6
+            nz = _noise(sn)
             
-            crack_n = int(0.05 * SAMPLE_RATE)
+            boom[:sn] += (nz - _lowpass(nz, 0.08)) * _envelope(sn, decay=45.0) * 0.12
+
+            s['explosion_small'] = _to_sound(_peak(boom, 0.8))
+
+            # Big explosion: hard crack, layered rumble, turbulent tail.
+            n = int(0.75 * SAMPLE_RATE)
             
-            boom[:crack_n] += _lowpass(_noise(crack_n), 0.5) * _envelope(crack_n, decay=40) * 0.8
+            boom = np.zeros(n)
+
+            m = int(0.025 * SAMPLE_RATE)
             
-            s['explosion_boss'] = _to_sound(boom * 0.9)
+            boom[:m] += _noise(m) * _envelope(m, attack=0.001, decay=100.0) * 1.3
+
+            boom += _lowpass(_noise(n), 0.03) * _boom_env(n, 18.0, 6.0) * 0.7
+            boom += _lowpass(_noise(n), 0.012) * _boom_env(n, 10.0, 3.5) * 0.5
+            boom += _sweep(60.0, 35.0, n, wave='sine') * _envelope(n, decay=8.0) * 0.3
+            boom += _lowpass(_noise(n), 0.15) * _crackle(n, 18.0) * _envelope(n, decay=5.0) * 0.25
+
+            s['explosion_big'] = _to_sound(_peak(boom, 0.85))
+
+            # Boss explosion: long layered blast with a crackling debris tail.
+            n = int(1.3 * SAMPLE_RATE)
+            
+            boom = np.zeros(n)
+
+            m = int(0.035 * SAMPLE_RATE)
+            
+            boom[:m] += _noise(m) * _envelope(m, attack=0.001, decay=80.0) * 1.5
+
+            boom += _lowpass(_noise(n), 0.025) * _boom_env(n, 15.0, 5.0) * 0.8
+            boom += _lowpass(_noise(n), 0.01) * _boom_env(n, 8.0, 2.8) * 0.55
+            boom += _sweep(50.0, 28.0, n, wave='sine') * _envelope(n, decay=6.0) * 0.35
+
+            cr = _crackle(n, 12.0)
+            cr *= np.exp(-np.arange(n, dtype=np.float64) / SAMPLE_RATE * 3.0)
+            
+            boom += _lowpass(_noise(n), 0.12) * cr * 0.3
+
+            s['explosion_boss'] = _to_sound(_peak(boom, 0.9))
 
             # Bomb: deep blast with a low rumble.
             n = int(0.5 * SAMPLE_RATE)
