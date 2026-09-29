@@ -103,6 +103,7 @@ class Player:
         self.score = 0
         self.streak = 0 # consecutive kills without being hit
         self.multiplier = 1
+        self.muted = False
 
         self.alive = True
         self.fire_cooldown = 0.0
@@ -281,7 +282,8 @@ class Player:
         else:
             self.bullets.append(PlayerBullet(self.x, y, 0.0, -C.BULLET_SPEED, self))
 
-        sound.play('laser', 0.5)
+        if not self.muted:
+            sound.play('laser', 0.5)
 
         self.fire_cooldown = cooldown
 

@@ -159,6 +159,9 @@ class Game:
                     self.quit()
                 elif ev.key == pygame.K_m:
                     self.sound.muted = not self.sound.muted
+                elif ev.key == pygame.K_n:
+                    for p in self.players:
+                        p.muted = not p.muted
                 elif ev.key == pygame.K_p:
                     if self.state == PLAYING:
                         self.paused = not self.paused
