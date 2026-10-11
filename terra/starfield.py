@@ -58,6 +58,7 @@ class Starfield:
                 self.stars.append(Star(layer))
 
         self.t = 0.0
+        self.band = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
 
     def update(self, dt: float, speed_mult: float = 1.0) -> None:
         '''
@@ -85,15 +86,12 @@ class Starfield:
         '''
         surf.fill(C.BLACK)
 
-        # Subtle vertical nebula gradient bands.
-        band = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
-
         for i in range(0, C.HEIGHT, 4):
             a = int(6 * (1.0 - i / C.HEIGHT))
             
-            pygame.draw.line(band, (20, 16, 50, a), (0, i), (C.WIDTH, i))
+            pygame.draw.line(self.band, (20, 16, 50, a), (0, i), (C.WIDTH, i))
 
-        surf.blit(band, (0, 0))
+        surf.blit(self.band, (0, 0))
 
         for s in self.stars:
             # Gentle twinkle.

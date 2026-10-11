@@ -1,4 +1,20 @@
-'''HUD and full-screen overlays: top bar, menu, wave intro, pause, game over.'''
+# Terra
+# Copyright (C) 2026  Goodarz Mehr
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+'''HUD and full-screen overlays: top bar, menu, intro, pause, game over.'''
 
 import pygame
 
@@ -6,46 +22,62 @@ from . import config as C
 
 
 class HUD:
+    '''Create the fonts used by the HUD.'''
     def __init__(self):
-        '''Create the fonts used by the HUD.'''
         self.font_xs = pygame.font.Font(None, 18)
         self.font_s = pygame.font.Font(None, 22)
         self.font_m = pygame.font.Font(None, 30)
         self.font_l = pygame.font.Font(None, 48)
         self.font_xl = pygame.font.Font(None, 92)
 
-    def draw_top(self, surf: pygame.Surface, players: list,
-                 level: int, highscores: dict) -> None:
+    def draw_top(self, surf: pygame.Surface, players: list, level: int, highscores: dict) -> None:
         '''
         Draw the in-game top bar (lives, score, level, wave stats).
 
         Args:
             surf: surface to draw on.
             players: list of Player objects.
-            level: current 1-based level number.
+            level: current level number.
             highscores: high scores dict keyed by player index.
         '''
-        # 1P block (left)
-        self._text(surf, '1UP', C.YELLOW, 16, 10, self.font_s)
-        s1 = self._text(surf, f'{players[0].score:07d}', C.WHITE, 16, 28, self.font_m)
+        # 1P block (left).
+        self._text(surf, 'P1', C.YELLOW, 16, 10, self.font_s)
+        
+        s1 = self._text(surf, f'{players[0].score:07d}', C.WHITE, 16, 30, self.font_m)
+        
         m1 = players[0].multiplier_value
 
         if m1 > 1:
-            self._text(surf, f'x{m1} STREAK', C.ORANGE, s1.right + 8, 30, self.font_s)
+            self._text(surf, f'x{m1}', C.ORANGE, s1.right + 8, 30, self.font_s)
 
-        # 2P block (right)
+        # 2P block (right).
         if len(players) > 1:
-            label = self._text(surf, '2UP', C.CYAN, 0, 10, self.font_s,
-                               align='right', anchor_x=C.WIDTH - 16)
+            self._text(surf, 'P2', C.CYAN, 0, 10, self.font_s, align='right', anchor_x=C.WIDTH - 16)
 
-            s2 = self._text(surf, f'{players[1].score:07d}', C.WHITE, 0, 28, self.font_m,
-                            align='right', anchor_x=C.WIDTH - 16)
+            s2 = self._text(
+                surf,
+                f'{players[1].score:07d}',
+                C.WHITE,
+                0,
+                30,
+                self.font_m,
+                align='right',
+                anchor_x=C.WIDTH - 16
+            )
 
             m2 = players[1].multiplier_value
 
             if m2 > 1:
-                self._text(surf, f'x{m2} STREAK', C.ORANGE, s2.left - 8, 30, self.font_s,
-                           align='right')
+                self._text(
+                    surf,
+                    f'x{m2}',
+                    C.ORANGE,
+                    s2.left - 8,
+                    30,
+                    self.font_s,
+                    align='right',
+                    anchor_x=C.WIDTH - 108
+                )
 
         # high score (center)
         hs = max(highscores.get('1p', 0), highscores.get('2p', 0))
@@ -72,7 +104,7 @@ class HUD:
                 continue
 
             bx = 24 if i == 0 else C.WIDTH - 24
-            by = 84 if i == 0 else 100  # 2P: clear the enemy-status line
+            by = 84
             pygame.draw.circle(surf, C.ORANGE, (bx, by), 7)
             pygame.draw.circle(surf, C.WHITE, (bx, by), 7, 2)
 
@@ -88,8 +120,7 @@ class HUD:
                   f'FIRE {p["enemy_fire_chance"]:.0%}   '
                   f'DIVERS {p["max_divers"]}')
 
-        self._text(surf, status, C.LIGHT_GRAY, 0, 20, self.font_xs,
-                   align='right', anchor_x=C.WIDTH - 16)
+        self._text(surf, status, C.LIGHT_GRAY, 0, 10, self.font_xs, align='right', anchor_x=C.WIDTH - 128)
 
     def _ship_icon(self, surf: pygame.Surface, x: int, y: int, color: tuple) -> None:
         '''

@@ -128,29 +128,6 @@ class Player:
         '''
         return min(C.STREAK_MAX, 1 + self.streak // 2)
 
-    def reset(self) -> None:
-        '''Reset position, lives, and streak for a new game.'''
-        self.x = C.WIDTH * (0.5 if self.oneP else 0.7 if self.index == 0 else 0.3)
-
-        self.vx = 0.0
-
-        self.lives = C.PLAYER_LIVES
-        self.score = 0
-        self.streak = 0
-
-        self.alive = True
-        self.fire_cooldown = 0.0
-        self.respawn_timer = 0.0
-        self.invuln = 1.0
-        self.spawn_anim = 1.0
-
-        self.shield = False
-        self.triple_t = 0.0
-        self.rapid_t = 0.0
-        self.bombs = C.BOMB_START
-
-        self.bullets.clear()
-
     def hit(self, effects: 'Effects', sound: 'SoundBank') -> bool:
         '''
         Handle the player being hit by an enemy or bullet.
