@@ -28,7 +28,7 @@ class HUD:
         self.font_s = pygame.font.Font(None, 22)
         self.font_m = pygame.font.Font(None, 30)
         self.font_l = pygame.font.Font(None, 48)
-        self.font_xl = pygame.font.Font(None, 92)
+        self.font_xl = pygame.font.Font(None, 144)
 
     def draw_top(self, surf: pygame.Surface, players: list, level: int, highscores: dict) -> None:
         '''
@@ -43,12 +43,12 @@ class HUD:
         # 1P block (left).
         self._text(surf, 'P1', C.YELLOW, 16, 10, self.font_s)
         
-        s1 = self._text(surf, f'{players[0].score:07d}', C.WHITE, 16, 30, self.font_m)
+        s1 = self._text(surf, f'{players[0].score:09d}', C.WHITE, 16, 30, self.font_m)
         
         m1 = players[0].multiplier_value
 
         if m1 > 1:
-            self._text(surf, f'x{m1}', C.ORANGE, s1.right + 8, 30, self.font_s)
+            self._text(surf, f'x{m1}', C.ORANGE, s1.right + 8, 34, self.font_s)
 
         # 2P block (right).
         if len(players) > 1:
@@ -56,7 +56,7 @@ class HUD:
 
             s2 = self._text(
                 surf,
-                f'{players[1].score:07d}',
+                f'{players[1].score:09d}',
                 C.WHITE,
                 0,
                 30,
@@ -73,54 +73,55 @@ class HUD:
                     f'x{m2}',
                     C.ORANGE,
                     s2.left - 8,
-                    30,
+                    34,
                     self.font_s,
                     align='right',
                     anchor_x=C.WIDTH - 108
                 )
 
-        # high score (center)
+        # High score (center).
         hs = max(highscores.get('1p', 0), highscores.get('2p', 0))
-        self._text(surf, f'HIGH {hs:07d}', C.WHITE, C.WIDTH // 2, 10, self.font_s,
-                   align='center')
+        
+        self._text(surf, f'HIGH {hs:09d}', C.WHITE, C.WIDTH // 2, 4, self.font_s, align='center')
 
-        # wave (center, below)
-        self._text(surf, f'WAVE {level}', C.GREEN, C.WIDTH // 2, 30, self.font_m,
-                   align='center')
+        # Wave (center, below).
+        self._text(surf, f'WAVE {level}', C.GREEN, C.WIDTH // 2, 20, self.font_m, align='center')
 
-        # lives: one ship icon + a count, styled like the bomb counter
+        # Lives.
         for i, p in enumerate(players):
             if i == 0:
                 self._ship_icon(surf, 24, 58, C.GREEN)
-                self._text(surf, f'x{p.lives}', C.GREEN, 40, 49, self.font_s)
+                self._text(surf, f'x{p.lives}', C.GREEN, 40, 52, self.font_s)
             else:
                 self._ship_icon(surf, C.WIDTH - 24, 58, C.GREEN)
-                self._text(surf, f'x{p.lives}', C.GREEN, 0, 49, self.font_s,
-                           align='right', anchor_x=C.WIDTH - 40)
+                self._text(surf, f'x{p.lives}', C.GREEN, 0, 52, self.font_s, align='right', anchor_x=C.WIDTH - 40)
 
-        # bomb counts (top left for 1P, top right for 2P)
+        # Bomb counts (top left for 1P, top right for 2P).
         for i, p in enumerate(players):
             if p.bombs <= 0:
                 continue
 
             bx = 24 if i == 0 else C.WIDTH - 24
             by = 84
+            
             pygame.draw.circle(surf, C.ORANGE, (bx, by), 7)
             pygame.draw.circle(surf, C.WHITE, (bx, by), 7, 2)
 
             if i == 0:
-                self._text(surf, f'x{p.bombs}', C.ORANGE, bx + 14, by - 9, self.font_s)
+                self._text(surf, f'x{p.bombs}', C.ORANGE, bx + 14, by - 6, self.font_s)
             else:
-                self._text(surf, f'x{p.bombs}', C.ORANGE, 0, by - 9, self.font_s,
-                           align='right', anchor_x=bx - 14)
+                self._text(surf, f'x{p.bombs}', C.ORANGE, 0, by - 6, self.font_s, align='right', anchor_x=bx - 14)
 
-        # enemy status (top right, small font)
+        # Enemy status (top right, small font).
         p = C.level_params(level)
-        status = (f'DIVE {int(p["dive_speed"])}   '
-                  f'FIRE {p["enemy_fire_chance"]:.0%}   '
-                  f'DIVERS {p["max_divers"]}')
+        
+        status = (
+            f'DIVE SPEED: {int(p["dive_speed"])}   '
+            f'FIRE CHANCE: {p["enemy_fire_chance"]:.0%}   '
+            f'DIVERS: {p["max_divers"]}'
+        )
 
-        self._text(surf, status, C.LIGHT_GRAY, 0, 10, self.font_xs, align='right', anchor_x=C.WIDTH - 128)
+        self._text(surf, status, C.LIGHT_GRAY, C.WIDTH // 2, 40, self.font_xs, align='center')
 
     def _ship_icon(self, surf: pygame.Surface, x: int, y: int, color: tuple) -> None:
         '''
@@ -128,17 +129,15 @@ class HUD:
 
         Args:
             surf: surface to draw on.
-            x: icon center x in px.
-            y: icon center y in px.
+            x: icon center x (px).
+            y: icon center y (px).
             color: hull color.
         '''
-        pts = [(x, y + 6), (x - 6, y - 5), (x - 2, y - 5), (x, y - 2),
-               (x + 2, y - 5), (x + 6, y - 5), (x, y + 6)]
+        pts = [(x, y + 6), (x - 6, y - 5), (x - 2, y - 5), (x, y - 2), (x + 2, y - 5), (x + 6, y - 5), (x, y + 6)]
 
         pygame.draw.polygon(surf, color, pts)
 
-    def draw_menu(self, surf: pygame.Surface, highscores: dict,
-                  selected_mode: int) -> None:
+    def draw_menu(self, surf: pygame.Surface, highscores: dict, selected_mode: int) -> None:
         '''
         Draw the main menu with the selected mode highlighted.
 
@@ -147,44 +146,55 @@ class HUD:
             highscores: high scores dict keyed by player index.
             selected_mode: index of the highlighted menu mode.
         '''
-        # title with layered color
         title = self.font_xl.render('TERRA', True, C.RED)
         t2 = self.font_xl.render('TERRA', True, C.ORANGE)
+        
         surf.blit(t2, t2.get_rect(center=(C.WIDTH // 2, 150)))
         surf.blit(title, title.get_rect(center=(C.WIDTH // 2, 148)))
-        sub = self.font_m.render('CO-OP ARCADE ACTION', True, C.CYAN)
-        surf.blit(sub, sub.get_rect(center=(C.WIDTH // 2, 205)))
 
-        # mode select
-        opts = [('1 PLAYER', 1), ('2 PLAYERS (CO-OP)', 2)]
+        # Mode selection.
+        opts = [('1 PLAYER', 1), ('2 PLAYERS', 2)]
+        
         y = 290
 
         for text, mode in opts:
             color = C.WHITE if mode == selected_mode else C.GRAY
+            
             img = self.font_l.render(text, True, color)
-            surf.blit(img, img.get_rect(center=(C.WIDTH // 2 + (28 if mode == selected_mode else 0), y)))
+            
+            surf.blit(img, img.get_rect(center=(C.WIDTH // 2, y)))
 
             if mode == selected_mode:
                 arrow = self.font_l.render('>', True, C.YELLOW)
+                
                 surf.blit(arrow, (C.WIDTH // 2 - img.get_width() // 2 - 30, y - 22))
 
             y += 56
 
-        # high scores
+        # High scores.
         hs1 = highscores.get('1p', 0)
         hs2 = highscores.get('2p', 0)
-        h1 = self.font_m.render(f'HIGH SCORE  1P: {hs1:07d}', True, C.YELLOW)
+        
+        h1 = self.font_m.render(f'HIGH SCORE  1P: {hs1:09d}', True, C.YELLOW)
+        h2 = self.font_m.render(f'HIGH SCORE  2P: {hs2:09d}', True, C.YELLOW)
+        
         surf.blit(h1, h1.get_rect(center=(C.WIDTH // 2, 430)))
-        h2 = self.font_m.render(f'HIGH SCORE  2P: {hs2:07d}', True, C.YELLOW)
         surf.blit(h2, h2.get_rect(center=(C.WIDTH // 2, 460)))
 
-        # footer hints
-        f1 = self.font_s.render('UP/DOWN: SELECT   ENTER: START   P: PAUSE   ESC: QUIT',
-                                True, C.LIGHT_GRAY)
+        # Footer hints.
+        f1 = self.font_s.render(
+            'UP/DOWN: SELECT   ENTER/SPACE: START   P: PAUSE   ESC: QUIT   M: MUTE   N: MUTE PLAYER',
+            True,
+            C.LIGHT_GRAY
+        )
 
         surf.blit(f1, f1.get_rect(center=(C.WIDTH // 2, 540)))
-        f2 = self.font_s.render('P1: ARROWS MOVE (AUTO-FIRE, UP = BOMB)   P2: A/D MOVE (AUTO-FIRE, W = BOMB)',
-                                True, C.LIGHT_GRAY)
+        
+        f2 = self.font_s.render(
+            'P1: LEFT/RIGHT ARROW = MOVE, UP ARROW = BOMB   P2: A/D = MOVE, W = BOMB',
+            True,
+            C.LIGHT_GRAY
+        )
 
         surf.blit(f2, f2.get_rect(center=(C.WIDTH // 2, 566)))
 
@@ -246,7 +256,7 @@ class HUD:
 
         for i, p in enumerate(players):
             label = 'PLAYER 1' if i == 0 else 'PLAYER 2'
-            line = self.font_l.render(f'{label}: {p.score:07d}', True, C.WHITE)
+            line = self.font_l.render(f'{label}: {p.score:09d}', True, C.WHITE)
             surf.blit(line, line.get_rect(center=(C.WIDTH // 2, 310 + i * 50)))
 
         if highscore_flag:
