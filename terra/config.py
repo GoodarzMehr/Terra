@@ -88,15 +88,15 @@ FORMATION_CX = WIDTH / 2.0                      # enemy formation center (px)
 # is the upper/lower bound (if any).
 
 ENEMY_BULLET_SPEED_BASE = 300.0        # base enemy bullet speed (px/s)
-ENEMY_BULLET_SPEED_GROWTH = 6.0        # enemy bullet speed increase per level
+ENEMY_BULLET_SPEED_GROWTH = 12.0        # enemy bullet speed increase per level
                                        # (px/s)
-ENEMY_BULLET_MAX_SPEED = 900.0         # maximum enemy bullet speed (px/s)
+ENEMY_BULLET_MAX_SPEED = 1500.0         # maximum enemy bullet speed (px/s)
 ENEMY_BULLET_W, ENEMY_BULLET_H = 5, 12 # enemy bullet size (px)
 
 DIVE_INTERVAL_BASE = 3.0  # base time between enemy dive waves (seconds)
 DIVE_INTERVAL_DROP = 0.05 # decrease in time between enemy dive waves per
                           # level (seconds)
-DIVE_INTERVAL_MIN = 0.5   # minimum time between enemy dive waves (seconds)
+DIVE_INTERVAL_MIN = 0.1   # minimum time between enemy dive waves (seconds)
 DIVE_SPEED_BASE = 200.0   # base enemy dive speed (px/s)
 DIVE_SPEED_GROWTH = 5.0   # increase in enemy dive speed per level (px/s)
 DIVE_SPEED_MAX = 800.0    # maximum enemy dive speed (px/s)
@@ -106,7 +106,7 @@ FIRE_CHANCE_GROWTH = 0.02 # increase in chance of enemy firing a bullet per
 FIRE_CHANCE_MAX = 1.0     # maximum chance of enemy firing a bullet
 MAX_DIVERS_GROWTH = 8     # number of levels required to increase the maximum
                           # number of simultaneous divers by 1
-MAX_DIVERS_CAP = 8        # maximum number of simultaneous divers
+MAX_DIVERS_CAP = 16       # maximum number of simultaneous divers
 
 ENTRY_DELAY_BASE = 0.6      # base time between entry of enemy groups
                             # (seconds)
@@ -151,7 +151,7 @@ DIVE_SPREAD_MAX = 104.0           # maximum spread angle for divers to fan out
 DIVE_PINCER_CHANCE_BASE = 0.0    # base chance of a pincer dive
 DIVE_PINCER_CHANCE_GROWTH = 0.01 # increase in chance of a pincer dive per
                                  # level
-DIVE_PINCER_CHANCE_MAX = 0.5     # maximum chance of a pincer dive
+DIVE_PINCER_CHANCE_MAX = 0.8     # maximum chance of a pincer dive
 DIVE_REAIM_MIN = 0.8             # minimum time between re-aims for divers
                                  # (seconds)
 DIVE_REAIM_MAX = 1.6             # maximum time between re-aims for divers
@@ -164,7 +164,7 @@ FORMATION_BURST_CHANCE_BASE = 0.1    # base chance of a formation burst (shots
 FORMATION_BURST_CHANCE_GROWTH = 0.02 # increase in chance of a formation burst
                                      # per level
 FORMATION_BURST_CHANCE_MAX = 0.9     # maximum chance of a formation burst
-FORMATION_BURST_STEP = 40            # number of levels required to increase
+FORMATION_BURST_STEP = 20            # number of levels required to increase
                                      # the number of shooters in a formation
                                      # burst by 1
 FORMATION_BURST_MAX = 8              # maximum number of shooters in a
@@ -182,7 +182,7 @@ SPREAD_CHANCE_MAX = 0.5              # maximum chance of spread shot
 # Boss characteristics
 BOSS_SPREAD_CHANCE_GROWTH = 0.01 # increase in chance of boss spread shot per
                                  # level
-BOSS_SPREAD_CHANCE_MAX = 0.8     # maximum chance of boss spread shot
+BOSS_SPREAD_CHANCE_MAX = 0.9     # maximum chance of boss spread shot
 BOSS_HOMING_BASE = 0.1           # base chance of boss homing in on the player
 BOSS_HOMING_GROWTH = 0.02        # increase in chance of boss homing in on the
                                  # player per level

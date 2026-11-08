@@ -76,7 +76,7 @@ class HUD:
                     34,
                     self.font_s,
                     align='right',
-                    anchor_x=C.WIDTH - 108
+                    anchor_x=C.WIDTH - 128
                 )
 
         # High score (center).
@@ -204,19 +204,27 @@ class HUD:
 
         Args:
             surf: surface to draw on.
-            level: 1-based level number.
-            params: level parameters dict from config.level_params.
+            level: level number.
+            params: level parameters dict.
         '''
         banner = self.font_xl.render(f'WAVE {level}', True, C.YELLOW)
+        
         surf.blit(banner, banner.get_rect(center=(C.WIDTH // 2, 250)))
+        
         ready = self.font_l.render('GET READY', True, C.WHITE)
+        
         surf.blit(ready, ready.get_rect(center=(C.WIDTH // 2, 330)))
 
-        # difficulty readout
+        # Difficulty readout.
         p = params
+        
         diff = self.font_m.render(
-            f'ENEMY FIRE {p["enemy_fire_chance"]:.0%}   DIVE SPEED {int(p["dive_speed"])}   '
-            f'MAX DIVERS {p["max_divers"]}', True, C.GREEN)
+            f'ENEMY FIRE {p["enemy_fire_chance"]:.0%}   '
+            f'DIVE SPEED {int(p["dive_speed"])}   '
+            f'MAX DIVERS {p["max_divers"]}',
+            True,
+            C.GREEN
+        )
 
         surf.blit(diff, diff.get_rect(center=(C.WIDTH // 2, 395)))
 
@@ -228,47 +236,65 @@ class HUD:
             surf: surface to draw on.
         '''
         veil = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
+        
         veil.fill((0, 0, 0, 150))
+        
         surf.blit(veil, (0, 0))
 
         t = self.font_xl.render('PAUSED', True, C.WHITE)
+        
         surf.blit(t, t.get_rect(center=(C.WIDTH // 2, C.HEIGHT // 2 - 20)))
+        
         h = self.font_m.render('PRESS P TO RESUME', True, C.LIGHT_GRAY)
+        
         surf.blit(h, h.get_rect(center=(C.WIDTH // 2, C.HEIGHT // 2 + 40)))
 
-    def draw_game_over(self, surf: pygame.Surface, players: list,
-                       highscore_flag: bool) -> None:
+    def draw_game_over(self, surf: pygame.Surface, players: list, highscore_flag: bool) -> None:
         '''
-        Draw the game-over screen with final scores.
+        Draw the game over screen with final scores.
 
         Args:
             surf: surface to draw on.
             players: list of Player objects.
             highscore_flag: True if a new high score was set.
         '''
-
         veil = pygame.Surface((C.WIDTH, C.HEIGHT), pygame.SRCALPHA)
+        
         veil.fill((0, 0, 0, 170))
+        
         surf.blit(veil, (0, 0))
 
         t = self.font_xl.render('GAME OVER', True, C.RED)
+        
         surf.blit(t, t.get_rect(center=(C.WIDTH // 2, 220)))
 
         for i, p in enumerate(players):
             label = 'PLAYER 1' if i == 0 else 'PLAYER 2'
+            
             line = self.font_l.render(f'{label}: {p.score:09d}', True, C.WHITE)
+            
             surf.blit(line, line.get_rect(center=(C.WIDTH // 2, 310 + i * 50)))
 
         if highscore_flag:
             flag = self.font_l.render('*** NEW HIGH SCORE ***', True, C.YELLOW)
+            
             surf.blit(flag, flag.get_rect(center=(C.WIDTH // 2, 410)))
 
         h = self.font_m.render('PRESS ENTER FOR MENU', True, C.LIGHT_GRAY)
+        
         surf.blit(h, h.get_rect(center=(C.WIDTH // 2, 480)))
 
-    def _text(self, surf: pygame.Surface, text: str, color: tuple, x: int, y: int,
-              font: pygame.font.Font, align: str = 'left',
-              anchor_x: int = None) -> pygame.Rect:
+    def _text(
+        self,
+        surf: pygame.Surface,
+        text: str,
+        color: tuple,
+        x: int,
+        y: int,
+        font: pygame.font.Font,
+        align: str = 'left',
+        anchor_x: int = None
+    ) -> pygame.Rect:
         '''
         Blit a centered text string and return its rect.
 
@@ -276,17 +302,17 @@ class HUD:
             surf: surface to draw on.
             text: string to render.
             color: text color.
-            x: anchor x in px.
-            y: anchor y in px.
+            x: anchor x (px).
+            y: anchor y (px).
             font: font to render with.
             align: vertical alignment ('top', 'center', or 'bottom').
             anchor_x: anchor x from 0.0 (left) to 1.0 (right).
 
         Returns:
-            Rect of the rendered text.
+            r: Rect of the rendered text.
         '''
-
         img = font.render(text, True, color)
+        
         r = img.get_rect()
 
         if align == 'left':
