@@ -8,10 +8,7 @@
 
 ### Defend the Earth from the invading forces of Kryova.
 
-A colorful, arcade-style **TERRA** clone built with [`pygame`](https://www.pygame.org).
-**Zero external assets** — every sprite is drawn with pygame primitives and every
-sound effect is synthesized at runtime with numpy, so the entire game ships in a
-single folder.
+A colorful, arcade-style game built with [`pygame`](https://www.pygame.org).
 
 <p align="middle">
   <img src="assets/Terra.png" width="80%" />
