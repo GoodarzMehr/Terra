@@ -191,7 +191,7 @@ class HUD:
         surf.blit(f1, f1.get_rect(center=(C.WIDTH // 2, 540)))
         
         f2 = self.font_s.render(
-            'P1: LEFT/RIGHT ARROW = MOVE, UP ARROW = BOMB   P2: A/D = MOVE, W = BOMB',
+            'P1: LEFT/RIGHT = MOVE, UP = BOMB   P2: A/D = MOVE, W = BOMB',
             True,
             C.LIGHT_GRAY
         )

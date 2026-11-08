@@ -26,25 +26,27 @@ Selftest: python main.py --selftest   (headless, prints SELFTEST OK)
 Controls
   P1: LEFT/RIGHT move, UP bomb
   P2: A/D move, W bomb
-  P: pause, M: mute/unmute, Enter: confirm, Esc: quit
+  P: pause, M: mute/unmute, N: mute/unmute player, Enter: confirm, Esc: quit
 '''
 
-import json
+
 import os
-import random
 import sys
+import json
+import random
 
 import pygame
 
-from terra import config as C
-from terra.enemies import Fleet
 from terra.hud import HUD
-from terra.levels import LevelManager
-from terra.particles import Effects
+from terra.enemies import Fleet
 from terra.player import Player
+from terra.particles import Effects
+from terra.levels import LevelManager
+from terra.starfield import Starfield
 from terra.powerups import PowerupManager
 from terra.sound import SAMPLE_RATE, SoundBank
-from terra.starfield import Starfield
+
+from terra import config as C
 
 # Game states
 MENU = 'menu'
@@ -54,8 +56,14 @@ GAME_OVER = 'game_over'
 
 
 class Game:
+    '''
+    Initialize the game window, subsystems, and main menu state.
+    
+    Args:
+        selftest: if True, run in headless mode for automated testing.
+        fullscreen: if True, run in fullscreen mode.
+    '''
     def __init__(self, selftest: bool = False, fullscreen: bool = False):
-        '''Initialize the game window, subsystems, and main menu state.'''
         self.selftest = selftest
 
         if selftest:
@@ -67,19 +75,17 @@ class Game:
         pygame.display.set_caption(C.TITLE)
 
         # The game logic and all drawing happen in a logical C.WIDTH x
-        # C.HEIGHT space; the whole frame is then upscaled by UI_SCALE (2x)
+        # C.HEIGHT space. The whole frame is then upscaled by UI_SCALE (2x)
         # to the real window so that every sprite, bullet, particle and HUD
         # element is uniformly 2x larger.
         self.world = pygame.Surface((C.WIDTH, C.HEIGHT))
 
         if fullscreen:
             flags = pygame.FULLSCREEN | pygame.SCALED
+            
             self.screen = pygame.display.set_mode((C.WINDOW_W, C.WINDOW_H), flags)
         else:
-            # Fit the window to the display. A fixed 1600x1200 window is
-            # fine on a 4K screen but overflows smaller displays (or
-            # displays with OS scaling), so shrink it to the largest size
-            # that fits, keeping the 4:3 aspect ratio.
+            # Fit the window to the display.
             win_w, win_h = C.WINDOW_W, C.WINDOW_H
 
             try:
@@ -89,6 +95,7 @@ class Game:
 
             if dw and dh:
                 margin = 320  # headroom for title bar / taskbar
+               
                 scale = min(1.0, (dw - margin) / C.WINDOW_W, (dh - margin) / C.WINDOW_H)
 
                 if scale < 1.0:
@@ -99,13 +106,13 @@ class Game:
 
         self.clock = pygame.time.Clock()
 
-        self.sound = SoundBank()
-        self.starfield = Starfield()
-        self.effects = Effects()
+        self.hud = HUD()
         self.fleet = Fleet()
+        self.sound = SoundBank()
+        self.effects = Effects()
+        self.starfield = Starfield()
         self.levels = LevelManager()
         self.powerups = PowerupManager()
-        self.hud = HUD()
 
         self.mode = 1  # 1 or 2 players
         self.players = []
@@ -132,6 +139,7 @@ class Game:
                 data = json.load(f)
 
             return {'1p': int(data.get('1p', 0)), '2p': int(data.get('2p', 0))}
+        
         except (OSError, ValueError, TypeError):
             return {'1p': 0, '2p': 0}
 
@@ -185,17 +193,22 @@ class Game:
                 elif self.state == MENU:
                     if ev.key in (pygame.K_UP, pygame.K_w):
                         self.menu_select = 2 if self.menu_select == 1 else 1
+                        
                         self.sound.play('ui')
                     elif ev.key in (pygame.K_DOWN, pygame.K_s):
                         self.menu_select = 1 if self.menu_select == 2 else 2
+                        
                         self.sound.play('ui')
                     elif ev.key in (pygame.K_RETURN, pygame.K_SPACE):
                         self.mode = self.menu_select
+                        
                         self.sound.play('ui')
+                        
                         self.start_game()
                 elif self.state == GAME_OVER:
                     if ev.key == pygame.K_RETURN:
                         self.sound.play('ui')
+                        
                         self.to_menu()
                 elif self.state == PLAYING and not self.selftest and not self.paused:
                     if ev.key == pygame.K_UP:
@@ -219,15 +232,11 @@ class Game:
 
         return d1, d2
 
-    def _collisions(self, dt: float) -> None:
+    def _collisions(self) -> None:
         '''
-        Resolve bullets-vs-enemies, enemies-vs-players, and
-        powerup pickups.
-
-        Args:
-            dt: frame delta in seconds.
+        Resolve bullets-vs-enemies, enemies-vs-players, and powerup pickups.
         '''
-        # player bullets vs enemies
+        # Player bullets vs enemies.
         for p in self.players:
             for b in p.bullets:
                 if not b.alive:
@@ -241,6 +250,7 @@ class Game:
 
                     if br.colliderect(e.rect()):
                         b.alive = False
+                        
                         pts = self.fleet.hit_enemy(e, self.effects, self.sound)
 
                         if pts > 0:
@@ -248,15 +258,19 @@ class Game:
                             p.streak += 1
 
                             self.effects.popup(
-                                e.x, e.y, str(pts * p.multiplier_value),
-                                C.WHITE if p.index == 0 else C.CYAN)
+                                e.x,
+                                e.y,
+                                str(pts * p.multiplier_value),
+                                C.WHITE if p.index == 0 else C.CYAN
+                            )
 
                             self.powerups.maybe_drop(e.x, e.y, e.etype)
+                            
                             self.selftest_kills += 1
 
                         break
 
-        # enemy bullets vs players
+        # Enemy bullets vs players.
         for b in self.fleet.bullets:
             if not b.alive:
                 continue
@@ -267,11 +281,11 @@ class Game:
                 if not p.alive or p.invuln > 0:
                     continue
 
-                pr = pygame.Rect(int(p.x - C.PLAYER_W / 2), int(p.y - C.PLAYER_H / 2),
-                                 C.PLAYER_W, C.PLAYER_H)
+                pr = pygame.Rect(int(p.x - C.PLAYER_W / 2), int(p.y - C.PLAYER_H / 2), C.PLAYER_W, C.PLAYER_H)
 
                 if br.colliderect(pr):
                     b.alive = False
+                    
                     died = p.hit(self.effects, self.sound)
 
                     if died:
@@ -279,7 +293,7 @@ class Game:
 
                     break
 
-        # enemy ships vs players (ramming)
+        # Enemy ships vs players (ramming).
         for e in self.fleet.enemies:
             if e.state != 'dive':
                 continue
@@ -290,15 +304,16 @@ class Game:
                 if not p.alive or p.invuln > 0:
                     continue
 
-                pr = pygame.Rect(int(p.x - C.PLAYER_W / 2), int(p.y - C.PLAYER_H / 2),
-                                 C.PLAYER_W, C.PLAYER_H)
+                pr = pygame.Rect(int(p.x - C.PLAYER_W / 2), int(p.y - C.PLAYER_H / 2), C.PLAYER_W, C.PLAYER_H)
 
                 if er.colliderect(pr):
                     died = p.hit(self.effects, self.sound)
+                    
                     pts = self.fleet.hit_enemy(e, self.effects, self.sound)
 
                     if pts > 0:
                         p.score += pts * p.multiplier_value
+                        
                         self.powerups.maybe_drop(e.x, e.y, e.etype)
 
                     if died:
@@ -306,14 +321,16 @@ class Game:
 
     def update(self, dt: float) -> None:
         '''
-        Advance one frame of gameplay (players, fleet, powerups,
-        effects, and wave progression).
+        Advance one frame of gameplay (players, fleet, powerups, effects, and
+        wave progression).
 
         Args:
-            dt: frame delta in seconds.
+            dt: frame delta (seconds).
         '''
         self.state_time += dt
+        
         self.starfield.update(dt, 1.6 if self.state == PLAYING else 1.0)
+        
         self.effects.update(dt)
 
         if self.state == MENU:
@@ -338,13 +355,12 @@ class Game:
         if self.state != PLAYING or self.paused:
             return
 
-        # --- playing ---
+        # Playing.
         phase = self.levels.update(dt, self.fleet, self.sound)
 
-        # Keep the fleet updating in every phase. During 'clear' and
-        # 'intro' no enemies are alive, but in-flight enemy bullets must
-        # keep falling (and cull off-screen) instead of freezing mid-air
-        # between waves.
+        # Keep the fleet updating in every phase. During 'clear' and 'intro'
+        # no enemies are alive, but in-flight enemy bullets must keep falling
+        # (and cull off-screen) instead of freezing mid-air between waves.
         self.fleet.update(dt, self.players, self.sound)
 
         if phase == 'active':
@@ -354,78 +370,93 @@ class Game:
 
         for i, p in enumerate(self.players):
             d = d1 if i == 0 else d2
+            
             p.update(dt, d, self.sound)
 
         self.powerups.update(dt, self.players, self.sound, self.effects)
-        self._collisions(dt)
+        
+        self._collisions()
 
-        # game over?
+        # Game over?
         if all(p.lives <= 0 and not p.alive for p in self.players):
             self._finish_game()
 
     def _finish_game(self) -> None:
         '''Enter the game-over state and persist the high scores.'''
         key = f'{self.mode}p'
+        
         total = sum(p.score for p in self.players)
 
         if total > self.highscores[key]:
             self.highscores[key] = total
+            
             self.highscore_flag = True
+            
             self._save_highscores()
 
         self.state = GAME_OVER
         self.state_time = 0.0
+        
         self.sound.play('player_death', 0.8)
 
-    def _selftest_advance(self, dt: float) -> None:
+    def _selftest_advance(self) -> None:
         '''Drive the game through menu->level1->combat->clear->game over.'''
         if self.state == PLAYING:
             phase = self.levels.phase
 
             if phase == 'active':
-                # simulate combat: kill a couple of live enemies each frame
+                # Simulate combat: kill a couple of live enemies each frame.
                 alive = [e for e in self.fleet.enemies if e.state != 'dead']
 
                 for _ in range(min(2, len(alive))):
                     e = random.choice(alive)
+                    
                     alive.remove(e)
+                    
                     p = self.players[0]
+                    
                     pts = self.fleet.hit_enemy(e, self.effects, self.sound)
 
                     if pts > 0:
                         p.score += pts * p.multiplier_value
                         p.streak += 1
+                        
                         self.powerups.maybe_drop(e.x, e.y, e.etype)
+                        
                         self.selftest_kills += 1
 
-                # once level 1 is cleared and a new wave begins, end the run
+                # Once level 1 is cleared and a new wave begins, end the run.
                 if self.levels.level >= 2:
                     for p in self.players:
                         p.alive = False
                         p.lives = 0
 
-        # safety cap
+        # Safety cap.
         self._selftest_frames += 1
 
         if self._selftest_frames > C.FPS * 120:
             print('SELFTEST TIMEOUT at state', self.state)
+            
             self.quit()
 
     def draw(self) -> None:
         '''Render the current frame for the active game state.'''
-        # Draw the whole frame into the logical-resolution world surface,
-        # then upscale it 2x to the display window.
+        # Draw the whole frame into the logical-resolution world surface, then
+        # upscale it 2x to the display window.
         surf = self.world
+        
         self.starfield.draw(surf)
+        
         ox, oy = self.effects.offset()
 
         if self.state == MENU:
             self.hud.draw_menu(surf, self.highscores, self.menu_select)
+            
             self._present()
 
             return
 
-        # world (shaken)
+        # World (shaken).
         self.fleet.draw(surf, ox, oy)
 
         for p in self.players:
@@ -462,10 +493,11 @@ class Game:
 
         while self.running:
             dt = min(self.clock.tick(C.FPS) / 1000.0, 0.05)
+            
             self.handle_events()
 
             if self.selftest:
-                self._selftest_advance(dt)
+                self._selftest_advance()
 
             self.update(dt)
             self.draw()
@@ -477,20 +509,22 @@ def main() -> None:
     '''Parse CLI flags and launch the game.'''
     selftest = '--selftest' in sys.argv
     fullscreen = '--fullscreen' in sys.argv
+    
     game = Game(selftest=selftest, fullscreen=fullscreen)
 
     if selftest:
-        # force a deterministic-ish seed and run until it reaches game over
-        # + menu
+        # Force a deterministic-ish seed and run until it reaches game over
+        # + menu.
         random.seed(42)
+        
         game.run()
 
-        # selftest passes when the loop exits cleanly after reaching game
-        # over
+        # Selftest passes when the loop exits cleanly after reaching game over
         if game.state in (MENU, GAME_OVER):
             print('SELFTEST OK')
         else:
             print('SELFTEST FAIL: ended in state', game.state)
+            
             sys.exit(1)
     else:
         game.run()

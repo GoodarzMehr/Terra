@@ -88,7 +88,7 @@ FORMATION_CX = WIDTH / 2.0                      # enemy formation center (px)
 # is the upper/lower bound (if any).
 
 ENEMY_BULLET_SPEED_BASE = 300.0        # base enemy bullet speed (px/s)
-ENEMY_BULLET_SPEED_GROWTH = 12.0        # enemy bullet speed increase per level
+ENEMY_BULLET_SPEED_GROWTH = 8.0        # enemy bullet speed increase per level
                                        # (px/s)
 ENEMY_BULLET_MAX_SPEED = 1500.0         # maximum enemy bullet speed (px/s)
 ENEMY_BULLET_W, ENEMY_BULLET_H = 5, 12 # enemy bullet size (px)
